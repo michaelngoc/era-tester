@@ -407,9 +407,9 @@ export async function DELETE(
 
   const existingCase = caseRes.rows[0];
 
-  if (user.role !== "SUPER_ADMIN" && existingCase.created_by !== user.id) {
+  if (!user.isGlobalAdmin && existingCase.created_by !== user.id) {
     return NextResponse.json(
-      { error: "Chỉ Super Admin hoặc người tạo mới có quyền xóa kịch bản kiểm thử này!" },
+      { error: "Chỉ tài khoản có toàn quyền quản trị (Super Admin) hoặc người tạo mới có quyền xóa kịch bản kiểm thử này!" },
       { status: 403 }
     );
   }

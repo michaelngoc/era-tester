@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
   const projectId = searchParams.get("projectId");
   const projectSlug = searchParams.get("projectSlug");
 
-  const isGlobalAdmin = user.role === "SUPER_ADMIN" || user.role === "CTO";
+  const isGlobalAdmin = user.isGlobalAdmin;
 
   let sql = `
     SELECT m.*, 

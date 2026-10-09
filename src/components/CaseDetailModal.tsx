@@ -91,7 +91,7 @@ export default function CaseDetailModal({
   if (!testCase || !formData) return null;
 
   const isDev = currentUser?.role === "DEVELOPER";
-  const isSuperAdmin = currentUser?.role === "SUPER_ADMIN";
+  const isSuperAdmin = currentUser?.isGlobalAdmin || currentUser?.role === "SUPER_ADMIN";
   const canDelete = isSuperAdmin || (testCase.created_by && testCase.created_by === currentUser?.id);
 
   const handleClaimBug = async () => {

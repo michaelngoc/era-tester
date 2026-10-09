@@ -64,10 +64,10 @@ export async function DELETE(
     return NextResponse.json({ error: "Chưa xác thực" }, { status: 401 });
   }
 
-  // CHỈ SUPER ADMIN MỚI CÓ QUYỀN XÓA NHÓM KIỂM THỬ
-  if (user.role !== "SUPER_ADMIN") {
+  // CHỈ TÀI KHOẢN CÓ QUYỀN TOÀN CỤC MỚI ĐƯỢC XÓA NHÓM KIỂM THỬ
+  if (!user.isGlobalAdmin) {
     return NextResponse.json(
-      { error: "BỊ CHẶN: Chỉ Quản Trị Tối Cao (Super Admin) mới có quyền xóa nhóm kiểm thử!" },
+      { error: "BỊ CHẶN: Chỉ tài khoản có toàn quyền quản trị (Super Admin) mới có quyền xóa nhóm kiểm thử!" },
       { status: 403 }
     );
   }

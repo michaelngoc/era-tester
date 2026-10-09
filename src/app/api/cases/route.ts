@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
   const flowId = searchParams.get("flowId");
   const status = searchParams.get("status");
 
-  const isGlobalAdmin = user.role === "SUPER_ADMIN" || user.role === "CTO";
+  const isGlobalAdmin = user.isGlobalAdmin;
 
   let sql = `
     SELECT c.*, 

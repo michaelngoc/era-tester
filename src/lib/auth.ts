@@ -3,6 +3,7 @@ import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import bcrypt from "bcryptjs";
 import { query } from "./db";
+import { isGlobalAdminRole } from "./permissions";
 
 const JWT_SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || "eraweb_tester_hub_jwt_super_secure_secret_2026"
@@ -27,6 +28,7 @@ export interface UserSession {
   fullName: string;
   role: UserRole;
   status: "PENDING" | "ACTIVE" | "BANNED" | "INACTIVE";
+  isGlobalAdmin: boolean;
 }
 
 export async function hashPassword(password: string): Promise<string> {
@@ -44,6 +46,7 @@ export async function createSessionToken(user: UserSession): Promise<string> {
     fullName: user.fullName,
     role: user.role,
     status: user.status,
+    isGlobalAdmin: user.isGlobalAdmin,
   })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
@@ -76,11 +79,14 @@ export async function getCurrentUser(): Promise<UserSession | null> {
   if (res.rows.length === 0) return null;
 
   const row = res.rows[0];
+  const isGlobal = await isGlobalAdminRole(row.role);
+
   return {
     id: row.id,
     email: row.email,
     fullName: row.full_name || "",
     role: row.role,
     status: row.status,
+    isGlobalAdmin: isGlobal,
   };
 }

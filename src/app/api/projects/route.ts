@@ -8,7 +8,7 @@ export async function GET() {
     return NextResponse.json({ error: "Chưa xác thực hoặc chưa được duyệt" }, { status: 401 });
   }
 
-  const isGlobalAdmin = user.role === "SUPER_ADMIN" || user.role === "CTO";
+  const isGlobalAdmin = user.isGlobalAdmin;
 
   let sql = `
     SELECT p.*, 

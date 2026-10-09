@@ -5,8 +5,8 @@ import { sendAccountApprovedEmail } from "@/lib/mailer";
 
 export async function GET() {
   const currentUser = await getCurrentUser();
-  if (!currentUser || currentUser.role !== "SUPER_ADMIN") {
-    return NextResponse.json({ error: "Không có quyền Super Admin" }, { status: 403 });
+  if (!currentUser || !currentUser.isGlobalAdmin) {
+    return NextResponse.json({ error: "Không có quyền quản trị toàn cục" }, { status: 403 });
   }
 
   const res = await query(
@@ -20,8 +20,8 @@ export async function GET() {
 
 export async function PATCH(req: NextRequest) {
   const currentUser = await getCurrentUser();
-  if (!currentUser || currentUser.role !== "SUPER_ADMIN") {
-    return NextResponse.json({ error: "Không có quyền Super Admin" }, { status: 403 });
+  if (!currentUser || !currentUser.isGlobalAdmin) {
+    return NextResponse.json({ error: "Không có quyền quản trị toàn cục" }, { status: 403 });
   }
 
   const { userId, status, role } = await req.json();
@@ -63,8 +63,8 @@ export async function PATCH(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   const currentUser = await getCurrentUser();
-  if (!currentUser || currentUser.role !== "SUPER_ADMIN") {
-    return NextResponse.json({ error: "Không có quyền Super Admin" }, { status: 403 });
+  if (!currentUser || !currentUser.isGlobalAdmin) {
+    return NextResponse.json({ error: "Không có quyền quản trị toàn cục" }, { status: 403 });
   }
 
   const { searchParams } = new URL(req.url);

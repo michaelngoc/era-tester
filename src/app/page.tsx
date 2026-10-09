@@ -11,7 +11,7 @@ export default async function DashboardPage() {
   }
 
   const [projects, testers] = await Promise.all([
-    getInitialProjects(),
+    getInitialProjects(user),
     getInitialTesters(),
   ]);
 

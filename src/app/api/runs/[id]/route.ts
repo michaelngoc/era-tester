@@ -101,9 +101,9 @@ export async function DELETE(
     return NextResponse.json({ error: "Chưa xác thực" }, { status: 401 });
   }
 
-  if (user.role !== "SUPER_ADMIN") {
+  if (!user.isGlobalAdmin) {
     return NextResponse.json(
-      { error: "Chỉ Super Admin mới có quyền xóa đợt chạy test!" },
+      { error: "Chỉ tài khoản có toàn quyền quản trị (Super Admin) mới có quyền xóa đợt chạy test!" },
       { status: 403 }
     );
   }

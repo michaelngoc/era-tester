@@ -349,11 +349,13 @@ export default function DashboardClient({
     return { total, passed, bugs, fixing, verify, deploy, gitImpacted, passRate };
   }, [cases]);
 
+  const effectiveRole = currentUser?.isGlobalAdmin ? "SUPER_ADMIN" : currentUser?.role;
+
   return (
     <div className="flex-1 flex overflow-hidden">
       {/* Left Sidebar */}
       <ProjectSidebar
-        userRole={currentUser?.role}
+        userRole={effectiveRole}
         projects={projects}
         selectedProject={selectedProject}
         onSelectProject={(p) => setSelectedProject(p)}
@@ -385,7 +387,7 @@ export default function DashboardClient({
       {/* Main Workspace Stage */}
       <main className="flex-1 flex flex-col p-5 overflow-hidden">
         <DashboardHeader
-          userRole={currentUser?.role}
+          userRole={effectiveRole}
           selectedProject={selectedProject}
           selectedModule={selectedModule}
           viewMode={viewMode}

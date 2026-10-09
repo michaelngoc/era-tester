@@ -702,37 +702,63 @@ export default function StepChecklistDrawer({
                   </div>
 
                   {/* 4. KẾT QUẢ THỰC TẾ (ACTUAL RESULT) */}
-                  <div
-                    className={`p-3 rounded-2xl border ${
-                      item.status === "NEW"
-                        ? "bg-rose-50/70 dark:bg-rose-950/25 border-rose-200 dark:border-rose-800/50"
-                        : "bg-slate-50 dark:bg-slate-900/80 border-slate-200 dark:border-slate-800/80"
-                    }`}
-                  >
-                    <div className="flex items-center gap-1.5 mb-1.5">
-                      <AlertCircle
-                        className={`w-3.5 h-3.5 ${
-                          item.status === "NEW" ? "text-rose-500" : "text-slate-500"
-                        }`}
-                      />
-                      <span
-                        className={`font-semibold text-[11px] ${
-                          item.status === "NEW" ? "text-rose-700 dark:text-rose-300" : "text-slate-600 dark:text-slate-400"
+                  {(() => {
+                    const isMatch = Boolean(
+                      item.actual_result &&
+                      item.expected_result &&
+                      item.actual_result.trim() === item.expected_result.trim()
+                    );
+                    const isPass = item.status === "CLOSED" || isMatch;
+                    const isBug = item.status === "NEW" && !isMatch && Boolean(item.actual_result);
+
+                    return (
+                      <div
+                        className={`p-3 rounded-2xl border ${
+                          isPass
+                            ? "bg-emerald-50/70 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/40"
+                            : isBug
+                            ? "bg-rose-50/70 dark:bg-rose-950/25 border-rose-200 dark:border-rose-800/50"
+                            : "bg-slate-50 dark:bg-slate-900/80 border-slate-200 dark:border-slate-800/80"
                         }`}
                       >
-                        4. Kết Quả Thực Tế (Actual Result)
-                      </span>
-                    </div>
-                    <div
-                      className={`leading-relaxed text-[11.5px] ${
-                        item.status === "NEW" ? "text-rose-900 dark:text-rose-200" : "text-slate-800 dark:text-slate-300"
-                      }`}
-                    >
-                      {item.actual_result || (
-                        <span className="text-slate-400 italic">(Chưa ghi nhận kết quả thực tế)</span>
-                      )}
-                    </div>
-                  </div>
+                        <div className="flex items-center gap-1.5 mb-1.5">
+                          {isPass ? (
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                          ) : isBug ? (
+                            <AlertCircle className="w-3.5 h-3.5 text-rose-500" />
+                          ) : (
+                            <AlertCircle className="w-3.5 h-3.5 text-slate-400" />
+                          )}
+                          <span
+                            className={`font-semibold text-[11px] ${
+                              isPass
+                                ? "text-emerald-700 dark:text-emerald-300"
+                                : isBug
+                                ? "text-rose-700 dark:text-rose-300"
+                                : "text-slate-600 dark:text-slate-400"
+                            }`}
+                          >
+                            4. Kết Quả Thực Tế (Actual Result)
+                            {isPass && " - Đạt Chuẩn"}
+                            {isBug && " - Phát Sinh Lỗi"}
+                          </span>
+                        </div>
+                        <div
+                          className={`leading-relaxed text-[11.5px] ${
+                            isPass
+                              ? "text-emerald-900 dark:text-emerald-200"
+                              : isBug
+                              ? "text-rose-900 dark:text-rose-200"
+                              : "text-slate-800 dark:text-slate-300"
+                          }`}
+                        >
+                          {item.actual_result || (
+                            <span className="text-slate-400 italic">(Chưa ghi nhận kết quả thực tế)</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* 5. RESPONSE JSON / PAYLOAD */}

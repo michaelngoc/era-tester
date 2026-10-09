@@ -18,6 +18,7 @@ export interface NavbarProps {
     email: string;
     fullName: string;
     role: string;
+    isGlobalAdmin?: boolean;
   } | null;
 }
 
@@ -76,13 +77,13 @@ export default function Navbar({ user }: NavbarProps) {
             Nhật Ký Chạy Test
           </Link>
 
-          {user?.role === "SUPER_ADMIN" && (
+          {(user?.role === "SUPER_ADMIN" || user?.isGlobalAdmin) && (
             <Link
               href="/admin/users"
               className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-amber-700 dark:text-amber-300 hover:text-amber-800 dark:hover:text-amber-200 hover:bg-amber-500/10 rounded-xl transition-all duration-150 cursor-pointer"
             >
               <Users className="w-4 h-4 text-amber-500 dark:text-amber-400" />
-              Duyệt Thành Viên
+              Quản Trị & Phân Quyền
             </Link>
           )}
 
@@ -122,19 +123,58 @@ export default function Navbar({ user }: NavbarProps) {
                 {user.fullName || user.email}
               </div>
               <div className="text-[10px] font-medium tracking-wide">
-                {user.role === "SUPER_ADMIN" ? (
-                  <span className="text-amber-600 dark:text-amber-400 font-bold tracking-wider uppercase text-[9.5px]">
-                    Quản Trị Tối Cao
-                  </span>
-                ) : user.role === "DEVELOPER" ? (
-                  <span className="text-indigo-600 dark:text-indigo-400 font-bold tracking-wider uppercase text-[9.5px]">
-                    Lập Trình Viên (Dev)
-                  </span>
-                ) : (
-                  <span className="text-sky-600 dark:text-sky-400 font-bold tracking-wider uppercase text-[9.5px]">
-                    Kiểm Thử Viên (QA)
-                  </span>
-                )}
+                {(() => {
+                  switch (user.role) {
+                    case "SUPER_ADMIN":
+                      return (
+                        <span className="text-amber-600 dark:text-amber-400 font-bold tracking-wider uppercase text-[9.5px]">
+                          Quản Trị Tối Cao
+                        </span>
+                      );
+                    case "CTO":
+                      return (
+                        <span className="text-amber-500 dark:text-amber-300 font-extrabold tracking-wider uppercase text-[9.5px]">
+                          Giám Đốc Công Nghệ (CTO)
+                        </span>
+                      );
+                    case "LEADER":
+                      return (
+                        <span className="text-blue-600 dark:text-blue-400 font-bold tracking-wider uppercase text-[9.5px]">
+                          Trưởng Nhóm (Leader)
+                        </span>
+                      );
+                    case "DEVELOPER":
+                      return (
+                        <span className="text-indigo-600 dark:text-indigo-400 font-bold tracking-wider uppercase text-[9.5px]">
+                          Lập Trình Viên (Dev)
+                        </span>
+                      );
+                    case "QA":
+                      return (
+                        <span className="text-cyan-600 dark:text-cyan-400 font-bold tracking-wider uppercase text-[9.5px]">
+                          Kỹ Sư QA (Đảm Bảo CL)
+                        </span>
+                      );
+                    case "QC":
+                      return (
+                        <span className="text-emerald-600 dark:text-emerald-400 font-bold tracking-wider uppercase text-[9.5px]">
+                          Kỹ Sư QC (Kiểm Thử CL)
+                        </span>
+                      );
+                    case "TESTER":
+                      return (
+                        <span className="text-sky-600 dark:text-sky-400 font-bold tracking-wider uppercase text-[9.5px]">
+                          Kiểm Thử Viên (Tester)
+                        </span>
+                      );
+                    default:
+                      return (
+                        <span className="text-slate-500 font-medium tracking-wider uppercase text-[9.5px]">
+                          {user.role}
+                        </span>
+                      );
+                  }
+                })()}
               </div>
             </div>
 

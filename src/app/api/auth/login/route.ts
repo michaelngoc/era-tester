@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { comparePassword, createSessionToken } from "@/lib/auth";
+import { isGlobalAdminRole } from "@/lib/permissions";
 
 export async function POST(req: NextRequest) {
   try {
@@ -47,12 +48,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const isGlobal = await isGlobalAdminRole(user.role);
+
     const token = await createSessionToken({
       id: user.id,
       email: user.email,
       fullName: user.full_name || "",
       role: user.role,
       status: user.status,
+      isGlobalAdmin: isGlobal,
     });
 
     const response = NextResponse.json({
@@ -62,6 +66,7 @@ export async function POST(req: NextRequest) {
         email: user.email,
         fullName: user.full_name,
         role: user.role,
+        isGlobalAdmin: isGlobal,
       },
     });
 
