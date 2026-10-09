@@ -137,9 +137,17 @@ function TestStepNode({ data }: { data: any }) {
         </div>
       </div>
 
-      {/* Step Title */}
-      <div className="font-bold text-xs text-slate-100 group-hover:text-sky-300 transition line-clamp-2 leading-relaxed">
-        {title}
+      {/* Step Title with prominent ({total}) checklist count */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="font-bold text-xs text-slate-100 group-hover:text-sky-300 transition line-clamp-2 leading-relaxed flex-1">
+          {title}
+        </div>
+        <span
+          className="shrink-0 px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-sky-500/20 text-sky-300 border border-sky-500/30 group-hover:bg-sky-500/30 group-hover:text-sky-200 transition shadow-sm"
+          title={`Bước này có ${total} checklist kiểm thử`}
+        >
+          ({total})
+        </span>
       </div>
 
       {description && (
@@ -148,11 +156,11 @@ function TestStepNode({ data }: { data: any }) {
         </div>
       )}
 
-      {/* Footer: Checklist progress count */}
-      <div className="mt-3 pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-[11px]">
-        <div className="flex items-center gap-1 text-slate-400">
+      {/* Footer: Quick glance indicator & click prompt */}
+      <div className="mt-3 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px]">
+        <div className="flex items-center gap-1.5 text-slate-400 group-hover:text-sky-300 transition font-medium">
           <ListChecks className="w-3.5 h-3.5 text-sky-400" />
-          <span>Checklist: <strong>{total}</strong></span>
+          <span>Click mở ({total}) checklist</span>
         </div>
 
         {total > 0 && (

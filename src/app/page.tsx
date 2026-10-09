@@ -1007,6 +1007,10 @@ export default function DashboardPage() {
         onClose={() => setSelectedStep(null)}
         onSelectCase={(c) => setSelectedCase(c)}
         onAddCase={handleAddChecklistCase}
+        onUpdateCase={(updated) => {
+          setCases((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+          if (selectedCase?.id === updated.id) setSelectedCase(updated);
+        }}
         onStatusChange={handleStatusChange}
         onDeleteCase={handleDeleteCase}
         onDeleteStep={handleDeleteStepFromFlow}
