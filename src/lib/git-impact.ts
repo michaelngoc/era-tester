@@ -100,14 +100,19 @@ export async function processGitPushImpact(payload: GitCommitPayload) {
         const curCase = caseRes.rows[0];
         const oldStatus = curCase.status;
 
-        // Cập nhật trạng thái case sang VERIFY
+        // Cập nhật trạng thái case sang VERIFY và gán cho Tester tạo kịch bản (nếu vẫn còn ACTIVE)
         await query(
-          `UPDATE era_tester_cases 
+          `UPDATE era_tester_cases c
            SET status = 'VERIFY', 
                is_impacted_by_git = TRUE,
-               last_run_id = COALESCE($1, last_run_id),
+               assigned_to = (
+                 SELECT CASE WHEN u.status = 'ACTIVE' THEN u.id ELSE NULL END
+                 FROM era_tester_users u
+                 WHERE u.id = c.created_by
+               ),
+               last_run_id = COALESCE($1, c.last_run_id),
                updated_at = NOW() 
-           WHERE id = $2`,
+           WHERE c.id = $2`,
           [activeRunId, caseId]
         );
 

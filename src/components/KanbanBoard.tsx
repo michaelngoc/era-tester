@@ -14,17 +14,18 @@ import {
   User,
   GripVertical,
   ArrowDownCircle,
+  Rocket,
 } from "lucide-react";
+
+export type ColumnStatus = "NEW" | "FIX" | "VERIFY" | "DEPLOY" | "CLOSED";
 
 interface KanbanBoardProps {
   cases: TestCase[];
   onSelectCase: (testCase: TestCase) => void;
-  onStatusChange: (id: number, nextStatus: "NEW" | "FIX" | "VERIFY" | "CLOSED") => void;
-  onAddNewCase: (status: "NEW" | "FIX" | "VERIFY" | "CLOSED") => void;
+  onStatusChange: (id: number, nextStatus: ColumnStatus) => void;
+  onAddNewCase: (status: ColumnStatus) => void;
   onClaimTask?: (id: number, action: "claim_bug" | "claim_test") => void;
 }
-
-type ColumnStatus = "NEW" | "FIX" | "VERIFY" | "CLOSED";
 
 interface ColumnDef {
   id: ColumnStatus;
@@ -77,12 +78,25 @@ const DEFAULT_COLUMNS: ColumnDef[] = [
     headerText: "text-purple-600 dark:text-purple-400",
     pillBg: "bg-purple-100 dark:bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-500/30",
     dropRing: "ring-2 ring-purple-500/80 bg-purple-500/15 border-purple-400 dark:border-purple-500 shadow-lg shadow-purple-500/20",
+    nextStatus: "DEPLOY",
+    nextLabel: "Pass ➔ Deploy",
+  },
+  {
+    id: "DEPLOY",
+    title: "Chờ Deploy Prod",
+    icon: Rocket,
+    color: "indigo",
+    bg: "bg-indigo-50/70 dark:bg-indigo-950/10",
+    border: "border-indigo-200 dark:border-indigo-900/30",
+    headerText: "text-indigo-600 dark:text-indigo-400",
+    pillBg: "bg-indigo-100 dark:bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-500/30",
+    dropRing: "ring-2 ring-indigo-500/80 bg-indigo-500/15 border-indigo-400 dark:border-indigo-500 shadow-lg shadow-indigo-500/20",
     nextStatus: "CLOSED",
-    nextLabel: "Hoàn Tất",
+    nextLabel: "Deploy Xong",
   },
   {
     id: "CLOSED",
-    title: "Kiểm Thử Đạt",
+    title: "Live Production",
     icon: CheckCircle2,
     color: "emerald",
     bg: "bg-emerald-50/70 dark:bg-emerald-950/10",
@@ -229,7 +243,7 @@ export default function KanbanBoard({
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 h-full select-none">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 h-full select-none">
       {columns.map((col, index) => {
         const columnCases = cases.filter((c) => c.status === col.id);
         const Icon = col.icon;
@@ -362,10 +376,24 @@ export default function KanbanBoard({
 
                     {/* Card Footer: Assignee, Claim & Quick Forward */}
                     <div className="flex items-center justify-between pt-2.5 border-t border-slate-100 dark:border-slate-800/80 text-[11px] text-slate-500 dark:text-slate-400 gap-2">
-                      <div className="flex items-center gap-1.5 truncate">
+                      <div className="flex items-center gap-1.5 truncate" title={item.assigned_name ? `Phụ trách: ${item.assigned_name}` : "Chưa phân công"}>
                         <User className="w-3 h-3 text-slate-400 dark:text-slate-500 shrink-0" />
-                        <span className="truncate max-w-[90px]">
-                          {item.assigned_name || (item.status === "NEW" ? "Chưa nhận" : "Chưa phân công")}
+                        <span className="truncate max-w-[120px] font-medium">
+                          {item.assigned_name 
+                            ? (item.status === "VERIFY" 
+                                ? `QA: ${item.assigned_name}` 
+                                : item.status === "DEPLOY" 
+                                ? `Dev Deploy: ${item.assigned_name}` 
+                                : item.status === "FIX" 
+                                ? `Dev: ${item.assigned_name}` 
+                                : item.assigned_name)
+                            : (item.status === "NEW" 
+                                ? "Chưa nhận" 
+                                : item.status === "VERIFY" 
+                                ? "Chờ QA test" 
+                                : item.status === "DEPLOY"
+                                ? "Chờ Dev deploy"
+                                : "Chưa phân công")}
                         </span>
                       </div>
 
@@ -386,8 +414,8 @@ export default function KanbanBoard({
                           </button>
                         )}
 
-                        {/* Nút Nhận Kiểm Thử Lại khi có Git Push */}
-                        {item.is_impacted_by_git && onClaimTask && (
+                        {/* Nút Nhận Kiểm Thử Lại khi ở cột VERIFY hoặc có Git Push */}
+                        {(item.status === "VERIFY" || item.is_impacted_by_git) && onClaimTask && (
                           <button
                             type="button"
                             onClick={(e) => {

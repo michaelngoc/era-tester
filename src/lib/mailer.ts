@@ -292,3 +292,115 @@ export async function sendBugClaimedEmail({
   });
 }
 
+/**
+ * Gửi email cho Developer khi Tester đã nghiệm thu PASS và chuyển sang Chờ Merge & Deploy Production
+ */
+export async function sendDeployRequestEmail({
+  devEmail,
+  devName,
+  bugTitle,
+  moduleName,
+  projectName,
+  caseId,
+  testerName,
+}: {
+  devEmail: string;
+  devName?: string;
+  bugTitle: string;
+  moduleName: string;
+  projectName?: string;
+  caseId: number;
+  testerName?: string;
+}) {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3008";
+  const html = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px; border: 1px solid #c7d2fe; border-radius: 12px; background: #ffffff;">
+      <h2 style="color: #6366f1; margin-top: 0;">🚀 Yêu Cầu Merge & Deploy Production</h2>
+      <p style="color: #334155; font-size: 14px;">
+        Xin chào <strong>${devName || "Developer"}</strong>,
+      </p>
+      <p style="color: #334155; font-size: 14px;">
+        Kịch bản kiểm thử sau đây đã được Tester <strong>${testerName || "QA Team"}</strong> xác minh <strong>ĐẠT (PASS)</strong> và sẵn sàng đưa lên môi trường Production:
+      </p>
+      <div style="background: #eef2ff; border: 1px solid #c7d2fe; padding: 14px 18px; border-radius: 8px; margin: 16px 0;">
+        <strong style="color: #4338ca; font-size: 15px;">#${caseId}: ${bugTitle}</strong>
+        <div style="font-size: 13px; color: #64748b; margin-top: 6px;">
+          Dự án: <strong>${projectName || "Eraweb"}</strong> • Nhóm: <strong>${moduleName}</strong>
+        </div>
+      </div>
+      <div style="background: #f8fafc; border-left: 4px solid #6366f1; padding: 12px 16px; margin-bottom: 20px; font-size: 13px; color: #475569;">
+        <strong>Hành động cần thực hiện:</strong><br/>
+        1. Tạo Pull Request merge nhánh <code>tester</code> vào nhánh <code>main</code>.<br/>
+        2. Chạy pipeline CI/CD hoặc kiểm tra sức khỏe hệ thống sau khi deploy Prod.<br/>
+        3. Truy cập Tester Hub và bấm <strong>"Deploy Xong / Hoàn Thành"</strong> để báo cáo ban quản lý.
+      </div>
+      <div style="text-align: center;">
+        <a href="${appUrl}" style="display: inline-block; background: #6366f1; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">
+          Mở Tester Hub & Xác Nhận Deploy
+        </a>
+      </div>
+    </div>
+  `;
+
+  return sendEmail({
+    to: devEmail,
+    subject: `[Deploy Ready] 🚀 #${caseId}: ${bugTitle} đã Pass - Yêu cầu Merge & Deploy Production`,
+    html,
+  });
+}
+
+/**
+ * Gửi email báo cáo hoàn tất Deploy Production cho Ban Quản Lý (Leader, PM, PO, CTO, Super Admin) & Tester
+ */
+export async function sendDeployCompletedEmail({
+  recipients,
+  bugTitle,
+  moduleName,
+  projectName,
+  caseId,
+  devName,
+}: {
+  recipients: string[];
+  bugTitle: string;
+  moduleName: string;
+  projectName?: string;
+  caseId: number;
+  devName?: string;
+}) {
+  if (recipients.length === 0) return;
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3008";
+  const html = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px; border: 1px solid #bbf7d0; border-radius: 12px; background: #ffffff;">
+      <h2 style="color: #16a34a; margin-top: 0;">🎉 Báo Cáo: Đã Deploy Production Hoàn Tất</h2>
+      <p style="color: #334155; font-size: 14px;">
+        Kính gửi Ban Quản Lý Dự Án & Đội Ngũ Kiểm Thử,
+      </p>
+      <p style="color: #334155; font-size: 14px;">
+        Developer <strong>${devName || "Kỹ sư phụ trách"}</strong> đã hoàn tất merge mã nguồn và phát hành thành công lên môi trường <strong>Production</strong>:
+      </p>
+      <div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 14px 18px; border-radius: 8px; margin: 16px 0;">
+        <strong style="color: #15803d; font-size: 15px;">#${caseId}: ${bugTitle}</strong>
+        <div style="font-size: 13px; color: #64748b; margin-top: 6px;">
+          Dự án: <strong>${projectName || "Eraweb"}</strong> • Module: <strong>${moduleName}</strong>
+        </div>
+      </div>
+      <p style="color: #15803d; font-size: 13px; font-weight: 600;">
+        Trạng thái kịch bản đã được chuyển sang: <strong>HOÀN THÀNH / ĐÃ ĐÓNG (CLOSED)</strong>.
+      </p>
+      <div style="text-align: center; margin-top: 24px;">
+        <a href="${appUrl}" style="display: inline-block; background: #16a34a; color: #ffffff; text-decoration: none; padding: 10px 22px; border-radius: 8px; font-weight: 600; font-size: 13px;">
+          Xem Tổng Quan Dự Án Trên Hub
+        </a>
+      </div>
+    </div>
+  `;
+
+  return sendEmail({
+    to: recipients,
+    subject: `[Deploy Live] ✅ #${caseId}: ${bugTitle} (${projectName || "Eraweb"}) đã Live Production`,
+    html,
+  });
+}
+
+

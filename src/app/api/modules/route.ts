@@ -12,6 +12,8 @@ export async function GET(req: NextRequest) {
   const projectId = searchParams.get("projectId");
   const projectSlug = searchParams.get("projectSlug");
 
+  const isGlobalAdmin = user.role === "SUPER_ADMIN" || user.role === "CTO";
+
   let sql = `
     SELECT m.*, 
            p.name AS project_name, p.slug AS project_slug,
@@ -19,6 +21,7 @@ export async function GET(req: NextRequest) {
            COUNT(CASE WHEN c.status = 'NEW' THEN 1 END) AS count_new,
            COUNT(CASE WHEN c.status = 'FIX' THEN 1 END) AS count_fix,
            COUNT(CASE WHEN c.status = 'VERIFY' THEN 1 END) AS count_verify,
+           COUNT(CASE WHEN c.status = 'DEPLOY' THEN 1 END) AS count_deploy,
            COUNT(CASE WHEN c.status = 'CLOSED' THEN 1 END) AS count_closed,
            COUNT(CASE WHEN c.is_impacted_by_git = TRUE THEN 1 END) AS count_git_impacted,
            COALESCE(
@@ -37,12 +40,17 @@ export async function GET(req: NextRequest) {
   `;
   const params: any[] = [];
 
+  if (!isGlobalAdmin) {
+    params.push(user.id);
+    sql += ` AND p.id IN (SELECT project_id FROM era_tester_project_members WHERE user_id = $${params.length}) `;
+  }
+
   if (projectId) {
-    sql += ` AND m.project_id = $1`;
     params.push(projectId);
+    sql += ` AND m.project_id = $${params.length}`;
   } else if (projectSlug) {
-    sql += ` AND p.slug = $1`;
     params.push(projectSlug);
+    sql += ` AND p.slug = $${params.length}`;
   }
 
   sql += ` GROUP BY m.id, p.name, p.slug ORDER BY m.sort_order ASC, m.id ASC`;

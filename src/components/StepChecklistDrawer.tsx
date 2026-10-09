@@ -39,7 +39,7 @@ interface StepChecklistDrawerProps {
   onSelectCase: (testCase: TestCase) => void;
   onAddCase: (newCase: Partial<TestCase>) => Promise<void>;
   onUpdateCase?: (updated: TestCase) => void;
-  onStatusChange: (id: number, nextStatus: "NEW" | "FIX" | "VERIFY" | "CLOSED") => void;
+  onStatusChange: (id: number, nextStatus: "NEW" | "FIX" | "VERIFY" | "DEPLOY" | "CLOSED") => void;
   onDeleteCase: (id: number) => void;
   onDeleteStep?: (stepId: string) => void;
   onClaimTask?: (id: number, action: "claim_bug" | "claim_test") => void;
@@ -866,7 +866,9 @@ export default function StepChecklistDrawer({
                         item.assigned_name ? "text-slate-800 dark:text-slate-300" : "text-amber-600 dark:text-amber-500/80 italic"
                       }`}
                     >
-                      {item.assigned_name || (item.status === "NEW" ? "Chưa có Dev nhận" : "Chưa phân công")}
+                      {item.assigned_name 
+                        ? (item.status === "VERIFY" ? `QA: ${item.assigned_name}` : item.status === "FIX" ? `Dev: ${item.assigned_name}` : item.assigned_name)
+                        : (item.status === "NEW" ? "Chưa có Dev nhận" : item.status === "VERIFY" ? "Chờ QA xác minh" : "Chưa phân công")}
                     </span>
                   </div>
 

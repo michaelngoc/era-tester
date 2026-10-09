@@ -8,6 +8,7 @@ import { ProjectSidebar } from "./ProjectSidebar";
 import { DashboardHeader } from "./DashboardHeader";
 import { DashboardCanvas } from "./DashboardCanvas";
 import { ProjectModal } from "@/components/modals/ProjectModal";
+import { ProjectMembersModal } from "@/components/modals/ProjectMembersModal";
 import { ModuleModal } from "@/components/modals/ModuleModal";
 import { FlowModal } from "@/components/modals/FlowModal";
 import { AddCaseModal } from "@/components/modals/AddCaseModal";
@@ -30,6 +31,7 @@ export default function DashboardClient({
     initialProjects.length > 0 ? initialProjects[0] : null
   );
   const [confirmDeleteProject, setConfirmDeleteProject] = useState<any>(null);
+  const [managingMembersProject, setManagingMembersProject] = useState<any>(null);
   const [isDeletingProject, setIsDeletingProject] = useState(false);
   const [projectModal, setProjectModal] = useState<{
     open: boolean;
@@ -52,8 +54,7 @@ export default function DashboardClient({
   const [flowModal, setFlowModal] = useState<{
     open: boolean;
     title: string;
-    templateType: "login" | "custom";
-  }>({ open: false, title: "", templateType: "login" });
+  }>({ open: false, title: "" });
 
   // Cases state
   const [cases, setCases] = useState<TestCase[]>([]);
@@ -256,7 +257,7 @@ export default function DashboardClient({
   // Case & Checklist handlers
   const handleStatusChange = async (
     id: number,
-    nextStatus: "NEW" | "FIX" | "VERIFY" | "CLOSED"
+    nextStatus: "NEW" | "FIX" | "VERIFY" | "DEPLOY" | "CLOSED"
   ) => {
     try {
       const res = await fetch(`/api/cases/${id}`, {
@@ -341,10 +342,11 @@ export default function DashboardClient({
     const bugs = cases.filter((c) => c.status === "NEW").length;
     const fixing = cases.filter((c) => c.status === "FIX").length;
     const verify = cases.filter((c) => c.status === "VERIFY").length;
+    const deploy = cases.filter((c) => c.status === "DEPLOY").length;
     const gitImpacted = cases.filter((c) => c.is_impacted_by_git).length;
     const passRate = total > 0 ? Math.round((passed / total) * 100) : 100;
 
-    return { total, passed, bugs, fixing, verify, gitImpacted, passRate };
+    return { total, passed, bugs, fixing, verify, deploy, gitImpacted, passRate };
   }, [cases]);
 
   return (
@@ -361,6 +363,10 @@ export default function DashboardClient({
         onOpenEditProject={(p, e) => {
           e.stopPropagation();
           setProjectModal({ open: true, mode: "edit", data: p });
+        }}
+        onOpenManageMembers={(p, e) => {
+          e.stopPropagation();
+          setManagingMembersProject(p);
         }}
         onDeleteProject={handleDeleteProject}
         modules={modules}
@@ -389,16 +395,7 @@ export default function DashboardClient({
           selectedFlow={selectedFlow}
           onSelectFlow={(f) => setSelectedFlow(f)}
           onDeleteFlow={handleDeleteFlow}
-          onOpenFlowModal={(templateType) =>
-            setFlowModal({
-              open: true,
-              title:
-                templateType === "login"
-                  ? "Luồng Đăng Nhập & Kiểm Tra Biểu Mẫu"
-                  : "",
-              templateType,
-            })
-          }
+          onOpenFlowModal={() => setFlowModal({ open: true, title: "" })}
           stats={stats}
           searchQuery={searchQuery}
           onSearchQueryChange={setSearchQuery}
@@ -416,16 +413,7 @@ export default function DashboardClient({
             onStatusChange={handleStatusChange}
             onAddNewCase={() => setShowAddCaseModal(true)}
             onClaimTask={handleClaimTask}
-            onOpenFlowModal={(templateType) =>
-              setFlowModal({
-                open: true,
-                title:
-                  templateType === "login"
-                    ? "Luồng Đăng Nhập & Kiểm Tra Biểu Mẫu"
-                    : "",
-                templateType,
-              })
-            }
+            onOpenFlowModal={() => setFlowModal({ open: true, title: "" })}
           />
         </div>
       </main>
@@ -496,7 +484,6 @@ export default function DashboardClient({
         moduleId={selectedModule?.id || 0}
         moduleName={selectedModule?.name}
         defaultTitle={flowModal.title}
-        defaultTemplateType={flowModal.templateType}
         onClose={() => setFlowModal((prev) => ({ ...prev, open: false }))}
         onSuccess={(newFlow) => {
           if (selectedModule?.id) {
@@ -513,6 +500,15 @@ export default function DashboardClient({
         nodeId={selectedStep?.id || selectedFlow?.nodes?.[0]?.id || "step-1"}
         onClose={() => setShowAddCaseModal(false)}
         onSuccess={(newCase) => setCases((prev) => [newCase, ...prev])}
+      />
+
+      {/* Modal phân công thành viên dự án */}
+      <ProjectMembersModal
+        open={!!managingMembersProject}
+        project={managingMembersProject}
+        currentUser={currentUser}
+        onClose={() => setManagingMembersProject(null)}
+        onUpdated={() => fetchProjects(selectedProject?.id)}
       />
 
       {/* Modal xác thực an toàn Type-to-Confirm khi xóa dự án */}

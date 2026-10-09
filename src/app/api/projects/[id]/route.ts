@@ -20,7 +20,7 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  const { name, slug, description, githubRepo } = await req.json();
+  const { name, slug, description, githubRepo, notifyDeployRoles } = await req.json();
 
   if (name !== undefined && name.trim().length < 2) {
     return NextResponse.json(
@@ -36,10 +36,18 @@ export async function PATCH(
      SET name = COALESCE($1, name),
          slug = COALESCE($2, slug),
          description = COALESCE($3, description),
-         github_repo = COALESCE($4, github_repo)
-     WHERE id = $5 AND (is_deleted IS NULL OR is_deleted = FALSE)
+         github_repo = COALESCE($4, github_repo),
+         notify_deploy_roles = COALESCE($5::jsonb, notify_deploy_roles)
+     WHERE id = $6 AND (is_deleted IS NULL OR is_deleted = FALSE)
      RETURNING *`,
-    [name?.trim(), cleanSlug, description, githubRepo?.trim(), id]
+    [
+      name?.trim(),
+      cleanSlug,
+      description,
+      githubRepo?.trim(),
+      notifyDeployRoles ? JSON.stringify(notifyDeployRoles) : null,
+      id,
+    ]
   );
 
   if (res.rows.length === 0) {

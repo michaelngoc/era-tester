@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { FolderGit2, Layers, Plus, Pencil, Trash2 } from "lucide-react";
+import { FolderGit2, Layers, Plus, Pencil, Trash2, Users } from "lucide-react";
 
 export interface ProjectSidebarProps {
   userRole?: string;
@@ -10,6 +10,7 @@ export interface ProjectSidebarProps {
   onSelectProject: (proj: any) => void;
   onOpenCreateProject: () => void;
   onOpenEditProject: (proj: any, e: React.MouseEvent) => void;
+  onOpenManageMembers?: (proj: any, e: React.MouseEvent) => void;
   onDeleteProject: (proj: any, e: React.MouseEvent) => void;
 
   modules: any[];
@@ -27,6 +28,7 @@ export function ProjectSidebar({
   onSelectProject,
   onOpenCreateProject,
   onOpenEditProject,
+  onOpenManageMembers,
   onDeleteProject,
   modules,
   selectedModule,
@@ -87,9 +89,19 @@ export function ProjectSidebar({
                     </span>
                   )}
 
-                  {/* Quick Edit & Delete Project buttons */}
+                  {/* Quick Edit, Members & Delete Project buttons */}
                   {!isDev && (
                     <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-opacity">
+                      {onOpenManageMembers && (
+                        <button
+                          type="button"
+                          onClick={(e) => onOpenManageMembers(p, e)}
+                          title="Phân công thành viên dự án"
+                          className="p-1 hover:bg-white/20 rounded transition text-slate-400 hover:text-sky-600 dark:text-slate-300 dark:hover:text-sky-300"
+                        >
+                          <Users className="w-3 h-3" />
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={(e) => onOpenEditProject(p, e)}

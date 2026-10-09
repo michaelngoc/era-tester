@@ -5,6 +5,8 @@ import {
   sendBugReportEmail,
   sendBroadcastBugToDevsEmail,
   sendBugClaimedEmail,
+  sendDeployRequestEmail,
+  sendDeployCompletedEmail,
   sendEmail,
 } from "@/lib/mailer";
 
@@ -21,9 +23,16 @@ export async function PATCH(
   const body = await req.json();
 
   const currentCaseRes = await query(
-    `SELECT c.*, m.name as module_name, u.email as creator_email, u.full_name as creator_name
+    `SELECT c.*, 
+            m.name as module_name, 
+            m.project_id,
+            p.name as project_name, 
+            p.notify_deploy_roles,
+            u.email as creator_email, 
+            u.full_name as creator_name
      FROM era_tester_cases c
      JOIN era_tester_modules m ON m.id = c.module_id
+     JOIN era_tester_projects p ON p.id = m.project_id
      LEFT JOIN era_tester_users u ON u.id = c.created_by
      WHERE c.id = $1 AND (c.is_deleted IS NULL OR c.is_deleted = FALSE)`,
     [id]
@@ -99,9 +108,32 @@ export async function PATCH(
   } else if (body.action === "claim_test") {
     assignedTo = user.id;
     actionName = "CLAIM_TEST";
+  } else if (newStatus === "VERIFY" && assignedTo === undefined && prev.status !== "VERIFY") {
+    // Khi chuyển sang VERIFY (Xác minh chờ Tester kiểm tra lại):
+    // Tự động gán lại cho chính Tester đã tạo ra kịch bản ban đầu (created_by) nếu tài khoản còn ACTIVE
+    if (prev.created_by) {
+      const creatorRes = await query("SELECT status FROM era_tester_users WHERE id = $1", [prev.created_by]);
+      if (creatorRes.rows[0]?.status === "ACTIVE") {
+        assignedTo = prev.created_by;
+      } else {
+        assignedTo = null; // Tester đã nghỉ việc/vô hiệu hóa -> để trống cho QA khác trong team nhận!
+      }
+    }
+  } else if (newStatus === "DEPLOY" && assignedTo === undefined && prev.status !== "DEPLOY") {
+    // Khi chuyển sang DEPLOY (Tester duyệt Pass, giao cho Dev merge & deploy Production):
+    // Tìm Developer đã từng nhận sửa hoặc commit bug này từ bảng era_tester_case_history
+    const devHistoryRes = await query(
+      `SELECT actor_id FROM era_tester_case_history 
+       WHERE case_id = $1 AND action IN ('CLAIM_BUG', 'AUTO_GIT_VERIFY') 
+       ORDER BY id DESC LIMIT 1`,
+      [id]
+    );
+    if (devHistoryRes.rows.length > 0 && devHistoryRes.rows[0].actor_id) {
+      assignedTo = devHistoryRes.rows[0].actor_id;
+    }
   }
 
-  const isResetGitFlag = newStatus === "VERIFY" || newStatus === "CLOSED";
+  const isResetGitFlag = newStatus === "VERIFY" || newStatus === "DEPLOY" || newStatus === "CLOSED";
 
   const updateRes = await query(
     `UPDATE era_tester_cases
@@ -133,7 +165,23 @@ export async function PATCH(
     ]
   );
 
-  const updatedCase = updateRes.rows[0];
+  // Truy vấn lại bản ghi đầy đủ kèm thông tin họ tên người phụ trách và người tạo
+  const fullCaseRes = await query(
+    `SELECT c.*, 
+            m.name AS module_name,
+            COALESCE(NULLIF(u_assigned.full_name, ''), u_assigned.email) AS assigned_name, 
+            u_assigned.email AS assigned_email,
+            COALESCE(NULLIF(u_creator.full_name, ''), u_creator.email) AS creator_name,
+            u_creator.email AS creator_email
+     FROM era_tester_cases c
+     JOIN era_tester_modules m ON m.id = c.module_id
+     LEFT JOIN era_tester_users u_assigned ON u_assigned.id = c.assigned_to
+     LEFT JOIN era_tester_users u_creator ON u_creator.id = c.created_by
+     WHERE c.id = $1`,
+    [id]
+  );
+
+  const updatedCase = fullCaseRes.rows[0] || updateRes.rows[0];
 
   const hasContentChange =
     (incomingTitle !== undefined && incomingTitle.trim() !== prev.title) ||
@@ -185,56 +233,152 @@ export async function PATCH(
   if (prev.status !== newStatus) {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3008";
 
+    // 1. Khi sang NEW (Tester báo Bug mới) -> Gửi cho Dev được gán hoặc broadcast cho Devs trong project
     if (newStatus === "NEW") {
-      if (updatedCase.assigned_to) {
-        const devRes = await query("SELECT email FROM era_tester_users WHERE id = $1", [
-          updatedCase.assigned_to,
-        ]);
-        if (devRes.rows.length > 0) {
-          await sendBugReportEmail({
-            devEmail: devRes.rows[0].email,
-            bugTitle: updatedCase.title,
-            moduleName: prev.module_name,
-            inputData: updatedCase.input_data,
-            actualResult: updatedCase.actual_result,
-            caseId: updatedCase.id,
-          });
+      try {
+        if (updatedCase.assigned_to) {
+          const devRes = await query("SELECT email FROM era_tester_users WHERE id = $1 AND status = 'ACTIVE'", [
+            updatedCase.assigned_to,
+          ]);
+          if (devRes.rows.length > 0) {
+            await sendBugReportEmail({
+              devEmail: devRes.rows[0].email,
+              bugTitle: updatedCase.title,
+              moduleName: prev.module_name,
+              inputData: updatedCase.input_data,
+              actualResult: updatedCase.actual_result,
+              caseId: updatedCase.id,
+            });
+          }
+        } else {
+          // Lọc danh sách Dev/Super_admin trong chính project này
+          const devsRes = await query<{ email: string }>(
+            `SELECT DISTINCT u.email 
+             FROM era_tester_users u
+             JOIN era_tester_project_members pm ON pm.user_id = u.id
+             WHERE pm.project_id = $1 AND u.status = 'ACTIVE' AND u.role IN ('DEVELOPER', 'SUPER_ADMIN', 'CTO')`,
+            [prev.project_id]
+          );
+          let devEmails = devsRes.rows.map((d) => d.email).filter(Boolean);
+          // Fallback nếu dự án chưa gán thành viên
+          if (devEmails.length === 0) {
+            const fallbackDevs = await query<{ email: string }>(
+              "SELECT email FROM era_tester_users WHERE status = 'ACTIVE' AND role IN ('DEVELOPER', 'SUPER_ADMIN')"
+            );
+            devEmails = fallbackDevs.rows.map((d) => d.email).filter(Boolean);
+          }
+          if (devEmails.length > 0) {
+            await sendBroadcastBugToDevsEmail({
+              devEmails,
+              bugTitle: updatedCase.title,
+              moduleName: prev.module_name,
+              inputData: updatedCase.input_data,
+              actualResult: updatedCase.actual_result,
+              caseId: updatedCase.id,
+              testerName: user.fullName || user.email,
+            });
+          }
         }
-      } else {
-        const devsRes = await query<{ email: string }>(
-          "SELECT email FROM era_tester_users WHERE status = 'ACTIVE' AND role IN ('DEVELOPER', 'SUPER_ADMIN')"
-        );
-        const devEmails = devsRes.rows.map((d) => d.email).filter(Boolean);
-        if (devEmails.length > 0) {
-          await sendBroadcastBugToDevsEmail({
-            devEmails,
+      } catch (err) {
+        console.warn("[Bug Email Error]", err);
+      }
+    }
+
+    // 2. Khi sang FIX (Dev đã sửa xong) -> Báo lại Tester ban đầu để Verify
+    if (newStatus === "FIX" && prev.creator_email) {
+      try {
+        await sendEmail({
+          to: prev.creator_email,
+          subject: `[Tester Hub] 🛠️ Case đã Fix xong: #${updatedCase.id} - ${updatedCase.title}`,
+          html: `
+            <div style="font-family: sans-serif; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
+              <h3 style="color: #0284c7;">Dev ${user.fullName || user.email} đã đánh dấu FIX cho case #${updatedCase.id}</h3>
+              <p><strong>Tiêu đề:</strong> ${updatedCase.title}</p>
+              <p><strong>Dự án:</strong> ${prev.project_name || "Eraweb"} • <strong>Module:</strong> ${prev.module_name}</p>
+              <p>Mời bạn vào hệ thống xác minh (Verify) lại kết quả kiểm thử.</p>
+              <a href="${appUrl}" style="display: inline-block; background: #0284c7; color: #fff; padding: 10px 18px; border-radius: 6px; text-decoration: none; font-weight: bold;">
+                Mở Verify Ngay
+              </a>
+            </div>
+          `,
+        });
+      } catch (err) {
+        console.warn("[Fix Email Error]", err);
+      }
+    }
+
+    // 3. Khi sang DEPLOY (Tester duyệt Pass, yêu cầu Dev merge & deploy Production)
+    if (newStatus === "DEPLOY") {
+      try {
+        let devEmail = updatedCase.assigned_email;
+        let devName = updatedCase.assigned_name;
+        if (!devEmail && updatedCase.assigned_to) {
+          const uRes = await query("SELECT email, full_name FROM era_tester_users WHERE id = $1", [updatedCase.assigned_to]);
+          if (uRes.rows[0]) {
+            devEmail = uRes.rows[0].email;
+            devName = uRes.rows[0].full_name || uRes.rows[0].email;
+          }
+        }
+        if (devEmail) {
+          await sendDeployRequestEmail({
+            devEmail,
+            devName,
             bugTitle: updatedCase.title,
             moduleName: prev.module_name,
-            inputData: updatedCase.input_data,
-            actualResult: updatedCase.actual_result,
+            projectName: prev.project_name,
             caseId: updatedCase.id,
             testerName: user.fullName || user.email,
           });
         }
+      } catch (err) {
+        console.warn("[Deploy Request Email Error]", err);
       }
     }
 
-    if (newStatus === "FIX" && prev.creator_email) {
-      await sendEmail({
-        to: prev.creator_email,
-        subject: `[Tester Hub] 🛠️ Case đã Fix xong: ${updatedCase.title}`,
-        html: `
-          <div style="font-family: sans-serif; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
-            <h3 style="color: #0284c7;">Dev đã đánh dấu FIX cho case #${updatedCase.id}</h3>
-            <p><strong>Tiêu đề:</strong> ${updatedCase.title}</p>
-            <p><strong>Module:</strong> ${prev.module_name}</p>
-            <p>Mời bạn vào hệ thống xác minh (Verify) lại kết quả kiểm thử.</p>
-            <a href="${appUrl}" style="display: inline-block; background: #0284c7; color: #fff; padding: 10px 18px; border-radius: 6px; text-decoration: none; font-weight: bold;">
-              Mở Verify Ngay
-            </a>
-          </div>
-        `,
-      });
+    // 4. Khi sang CLOSED (Dev đã Deploy Production thành công -> Gửi thông báo cho Ban Quản Lý theo cấu hình)
+    if (newStatus === "CLOSED") {
+      try {
+        let notifyRoles: string[] = ["LEADER"];
+        if (Array.isArray(prev.notify_deploy_roles) && prev.notify_deploy_roles.length > 0) {
+          notifyRoles = prev.notify_deploy_roles;
+        } else if (typeof prev.notify_deploy_roles === "string") {
+          try {
+            notifyRoles = JSON.parse(prev.notify_deploy_roles);
+          } catch {
+            notifyRoles = ["LEADER"];
+          }
+        }
+
+        const recipientRes = await query<{ email: string }>(
+          `SELECT DISTINCT u.email 
+           FROM era_tester_users u
+           WHERE u.status = 'ACTIVE' 
+             AND u.role = ANY($1::text[])
+             AND (
+               u.id IN (SELECT user_id FROM era_tester_project_members WHERE project_id = $2)
+               OR u.role IN ('SUPER_ADMIN', 'CTO')
+             )`,
+          [notifyRoles, prev.project_id]
+        );
+
+        const recipients = recipientRes.rows.map((r) => r.email).filter(Boolean);
+        if (prev.creator_email && !recipients.includes(prev.creator_email)) {
+          recipients.push(prev.creator_email);
+        }
+
+        if (recipients.length > 0) {
+          await sendDeployCompletedEmail({
+            recipients,
+            bugTitle: updatedCase.title,
+            moduleName: prev.module_name,
+            projectName: prev.project_name,
+            caseId: updatedCase.id,
+            devName: user.fullName || user.email,
+          });
+        }
+      } catch (err) {
+        console.warn("[Deploy Completed Email Error]", err);
+      }
     }
   }
 

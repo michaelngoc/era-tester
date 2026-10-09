@@ -8,12 +8,25 @@ const JWT_SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || "eraweb_tester_hub_jwt_super_secure_secret_2026"
 );
 
+export type UserRole =
+  | "SUPER_ADMIN"
+  | "CTO"
+  | "LEADER"
+  | "PM"
+  | "PO"
+  | "BA"
+  | "QA"
+  | "QC"
+  | "TESTER"
+  | "DEVELOPER"
+  | "MEMBER";
+
 export interface UserSession {
   id: number;
   email: string;
   fullName: string;
-  role: "SUPER_ADMIN" | "TESTER" | "DEVELOPER" | "MEMBER";
-  status: "PENDING" | "ACTIVE" | "BANNED";
+  role: UserRole;
+  status: "PENDING" | "ACTIVE" | "BANNED" | "INACTIVE";
 }
 
 export async function hashPassword(password: string): Promise<string> {

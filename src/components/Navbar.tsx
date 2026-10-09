@@ -17,7 +17,7 @@ export interface NavbarProps {
     id: number;
     email: string;
     fullName: string;
-    role: "SUPER_ADMIN" | "TESTER" | "DEVELOPER" | "MEMBER";
+    role: string;
   } | null;
 }
 

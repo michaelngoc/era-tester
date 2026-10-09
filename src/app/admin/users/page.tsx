@@ -149,22 +149,59 @@ export default function AdminUsersPage() {
                             value={u.role || "TESTER"}
                             onChange={(e) => handleUpdateRole(u.id, e.target.value)}
                             className={`px-2.5 py-1 rounded-xl text-xs font-semibold border focus:outline-none cursor-pointer transition ${
-                              u.role === "SUPER_ADMIN"
+                              u.role === "SUPER_ADMIN" || u.role === "CTO"
                                 ? "bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-500/30"
                                 : u.role === "DEVELOPER"
                                 ? "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-300 dark:border-indigo-500/30"
-                                : "bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-300 dark:border-sky-500/30"
+                                : u.role === "QA" || u.role === "QC" || u.role === "TESTER"
+                                ? "bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-300 dark:border-sky-500/30"
+                                : "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/30"
                             }`}
                           >
-                            <option value="TESTER" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
-                              Kiểm Thử Viên (QA)
-                            </option>
-                            <option value="DEVELOPER" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
-                              Lập Trình Viên (Dev)
-                            </option>
-                            <option value="SUPER_ADMIN" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
-                              Quản Trị Tối Cao
-                            </option>
+                            <optgroup label="Kiểm Thử & Đảm Bảo Chất Lượng">
+                              <option value="QA" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+                                QA (Đảm Bảo Chất Lượng)
+                              </option>
+                              <option value="QC" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+                                QC (Kiểm Soát Chất Lượng)
+                              </option>
+                              <option value="TESTER" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+                                Tester (Kiểm Thử Viên)
+                              </option>
+                            </optgroup>
+
+                            <optgroup label="Kỹ Thuật & Phát Triển">
+                              <option value="DEVELOPER" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+                                Developer (Lập Trình Viên)
+                              </option>
+                              <option value="LEADER" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+                                Leader (Trưởng Nhóm / Lead)
+                              </option>
+                              <option value="CTO" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+                                CTO (Giám Đốc Công Nghệ)
+                              </option>
+                            </optgroup>
+
+                            <optgroup label="Sản Phẩm & Quản Lý Dự Án">
+                              <option value="PM" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+                                PM (Quản Lý Dự Án)
+                              </option>
+                              <option value="PO" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+                                PO (Chủ Sản Phẩm)
+                              </option>
+                              <option value="BA" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+                                BA (Phân Tích Nghiệp Vụ)
+                              </option>
+                            </optgroup>
+
+                            <optgroup label="Quản Trị Hệ Thống">
+                              <option value="SUPER_ADMIN" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+                                Super Admin (Quản Trị Tối Cao)
+                              </option>
+                              <option value="MEMBER" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+                                Member (Thành Viên Xem)
+                              </option>
+                            </optgroup>
                           </select>
                         </div>
                       )}

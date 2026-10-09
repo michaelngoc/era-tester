@@ -18,8 +18,8 @@ export interface TesterUser {
   id: number;
   email: string;
   full_name: string | null;
-  role: "SUPER_ADMIN" | "TESTER" | "DEVELOPER" | "MEMBER";
-  status: "PENDING" | "ACTIVE" | "BANNED";
+  role: string;
+  status: "PENDING" | "ACTIVE" | "BANNED" | "INACTIVE";
 }
 
 export async function getInitialProjects(): Promise<ProjectItem[]> {

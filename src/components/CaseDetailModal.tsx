@@ -23,6 +23,7 @@ import CaseHistoryTimeline from "./CaseHistoryTimeline";
 export interface TestCase {
   id: number;
   module_id: number;
+  project_id?: number | null;
   flow_id?: number | null;
   node_id?: string | null;
   title: string;
@@ -32,7 +33,7 @@ export interface TestCase {
   actual_result?: string | null;
   response_payload?: string | null;
   evidence_urls?: string[] | null;
-  status: "NEW" | "FIX" | "VERIFY" | "CLOSED";
+  status: "NEW" | "FIX" | "VERIFY" | "DEPLOY" | "CLOSED";
   priority: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
   is_impacted_by_git?: boolean;
   assigned_to?: number | null;
@@ -61,9 +62,10 @@ export default function CaseDetailModal({
   const [activeTab, setActiveTab] = useState<"scenario" | "io" | "json" | "evidence" | "history">("scenario");
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [users, setUsers] = useState<{ testers: any[]; developers: any[] }>({
+  const [users, setUsers] = useState<{ testers: any[]; developers: any[]; managers: any[] }>({
     testers: [],
     developers: [],
+    managers: [],
   });
 
   useEffect(() => {
@@ -71,15 +73,20 @@ export default function CaseDetailModal({
   }, [testCase]);
 
   useEffect(() => {
-    fetch("/api/users")
+    const url = testCase?.project_id ? `/api/users?projectId=${testCase.project_id}` : "/api/users";
+    fetch(url)
       .then((res) => res.json())
       .then((data) => {
         if (data?.testers && data?.developers) {
-          setUsers({ testers: data.testers, developers: data.developers });
+          setUsers({
+            testers: data.testers,
+            developers: data.developers,
+            managers: data.managers || [],
+          });
         }
       })
       .catch((e) => console.error("Could not fetch users for assignment:", e));
-  }, []);
+  }, [testCase?.project_id]);
 
   if (!testCase || !formData) return null;
 
@@ -251,7 +258,8 @@ export default function CaseDetailModal({
                 <option value="NEW">Lỗi Phát Sinh (Mới)</option>
                 <option value="FIX">Đang Khắc Phục (Dev Đang Sửa)</option>
                 <option value="VERIFY">Chờ Xác Minh (QA Kiểm Thử Lại)</option>
-                <option value="CLOSED">Kiểm Thử Đạt (Hoàn Tất)</option>
+                <option value="DEPLOY">Chờ Merge & Deploy Production (Giao Cho Dev)</option>
+                <option value="CLOSED">Kiểm Thử Đạt / Đã Live Prod (Hoàn Tất)</option>
               </select>
             </div>
 
@@ -269,7 +277,7 @@ export default function CaseDetailModal({
               </select>
             </div>
 
-            {/* Phân công cho Developer / Tester */}
+            {/* Phân công cho Developer / Tester / Manager */}
             <div className="flex items-center gap-2 text-xs">
               <span className="text-slate-600 dark:text-slate-400 font-semibold">Phụ trách:</span>
               <select
@@ -283,20 +291,29 @@ export default function CaseDetailModal({
                 className="bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-900 dark:text-slate-200 focus:outline-none focus:border-sky-500 cursor-pointer"
               >
                 <option value="">Chưa phân công</option>
-                <optgroup label="Kiểm Thử Viên (Tester)">
+                <optgroup label="Kiểm Thử & Đảm Bảo Chất Lượng (QA / QC / Tester)">
                   {users.testers.map((t) => (
                     <option key={`t-${t.id}`} value={t.id}>
-                      QA: {t.full_name || t.email}
+                      {t.role || "QA"}: {t.full_name || t.email}
                     </option>
                   ))}
                 </optgroup>
-                <optgroup label="Lập Trình Viên (Dev)">
+                <optgroup label="Kỹ Thuật & Phát Triển (Developer)">
                   {users.developers.map((d) => (
                     <option key={`d-${d.id}`} value={d.id}>
-                      Dev: {d.full_name || d.email}
+                      {d.role || "Dev"}: {d.full_name || d.email}
                     </option>
                   ))}
                 </optgroup>
+                {users.managers && users.managers.length > 0 && (
+                  <optgroup label="Ban Quản Lý & Điều Hành (Leader / PM / PO / CTO)">
+                    {users.managers.map((m) => (
+                      <option key={`m-${m.id}`} value={m.id}>
+                        {m.role}: {m.full_name || m.email}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
               </select>
             </div>
 

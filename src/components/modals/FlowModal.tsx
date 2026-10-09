@@ -4,14 +4,11 @@ import React, { useState, useEffect } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
-import { Sparkles, Workflow } from "lucide-react";
-
 export interface FlowModalProps {
   open: boolean;
   moduleId: number;
   moduleName?: string;
   defaultTitle?: string;
-  defaultTemplateType?: "login" | "custom";
   onClose: () => void;
   onSuccess: (newFlow: any) => void;
 }
@@ -21,22 +18,19 @@ export function FlowModal({
   moduleId,
   moduleName,
   defaultTitle = "",
-  defaultTemplateType = "login",
   onClose,
   onSuccess,
 }: FlowModalProps) {
   const [title, setTitle] = useState(defaultTitle);
-  const [templateType, setTemplateType] = useState<"login" | "custom">(defaultTemplateType);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
     if (open) {
       setTitle(defaultTitle);
-      setTemplateType(defaultTemplateType);
       setError("");
     }
-  }, [open, defaultTitle, defaultTemplateType]);
+  }, [open, defaultTitle]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,7 +53,7 @@ export function FlowModal({
         body: JSON.stringify({
           moduleId,
           title: title.trim(),
-          templateType,
+          templateType: "custom",
         }),
       });
       const data = await res.json();
@@ -96,53 +90,8 @@ export function FlowModal({
           required
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="VD: Luồng Đăng Nhập & Phân Quyền"
+          placeholder="VD: Luồng Quản Lý Giỏ Hàng & Thanh Toán"
         />
-
-        <div>
-          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-            Chọn Loại Mẫu Luồng
-          </label>
-          <div className="space-y-2">
-            <div
-              onClick={() => setTemplateType("login")}
-              className={`flex items-start gap-3 p-3 rounded-2xl border transition cursor-pointer ${
-                templateType === "login"
-                  ? "bg-sky-50 dark:bg-sky-500/10 border-sky-500 text-slate-900 dark:text-white"
-                  : "bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700"
-              }`}
-            >
-              <Sparkles className="w-4 h-4 text-emerald-500 dark:text-emerald-400 mt-0.5 shrink-0" />
-              <div>
-                <div className="text-xs font-bold text-slate-900 dark:text-slate-100">
-                  Mẫu Luồng Đăng Nhập (Khuyên Dùng)
-                </div>
-                <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
-                  Tự sinh sẵn 4 bước chuẩn (Mở /login ➔ Nhập email/mật khẩu ➔ Nhấn nút đăng nhập ➔ Xử lý kết quả) kèm 8 kịch bản kiểm thử chi tiết (bỏ trống ô input, mật khẩu ngắn, nút quay chờ, báo lỗi sai pass, v.v.).
-                </div>
-              </div>
-            </div>
-
-            <div
-              onClick={() => setTemplateType("custom")}
-              className={`flex items-start gap-3 p-3 rounded-2xl border transition cursor-pointer ${
-                templateType === "custom"
-                  ? "bg-sky-50 dark:bg-sky-500/10 border-sky-500 text-slate-900 dark:text-white"
-                  : "bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700"
-              }`}
-            >
-              <Workflow className="w-4 h-4 text-sky-500 dark:text-sky-400 mt-0.5 shrink-0" />
-              <div>
-                <div className="text-xs font-bold text-slate-900 dark:text-slate-100">
-                  Tùy Chỉnh (Luồng Trống)
-                </div>
-                <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
-                  Khởi tạo sơ đồ cơ bản để bạn tự do tạo thêm các bước thao tác và kịch bản riêng biệt.
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
 
         <div className="flex items-center justify-end gap-2 pt-2">
           <Button type="button" variant="ghost" onClick={onClose}>
