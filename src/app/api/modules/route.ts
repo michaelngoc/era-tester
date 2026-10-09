@@ -1,0 +1,71 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getCurrentUser } from "@/lib/auth";
+import { query } from "@/lib/db";
+
+export async function GET(req: NextRequest) {
+  const user = await getCurrentUser();
+  if (!user || user.status !== "ACTIVE") {
+    return NextResponse.json({ error: "Chưa xác thực" }, { status: 401 });
+  }
+
+  const { searchParams } = new URL(req.url);
+  const projectId = searchParams.get("projectId");
+  const projectSlug = searchParams.get("projectSlug");
+
+  let sql = `
+    SELECT m.*, 
+           p.name AS project_name, p.slug AS project_slug,
+           COUNT(c.id) AS total_cases,
+           COUNT(CASE WHEN c.status = 'NEW' THEN 1 END) AS count_new,
+           COUNT(CASE WHEN c.status = 'FIX' THEN 1 END) AS count_fix,
+           COUNT(CASE WHEN c.status = 'VERIFY' THEN 1 END) AS count_verify,
+           COUNT(CASE WHEN c.status = 'CLOSED' THEN 1 END) AS count_closed,
+           COUNT(CASE WHEN c.is_impacted_by_git = TRUE THEN 1 END) AS count_git_impacted
+    FROM era_tester_modules m
+    JOIN era_tester_projects p ON p.id = m.project_id
+    LEFT JOIN era_tester_cases c ON c.module_id = m.id
+  `;
+  const params: any[] = [];
+
+  if (projectId) {
+    sql += ` WHERE m.project_id = $1`;
+    params.push(projectId);
+  } else if (projectSlug) {
+    sql += ` WHERE p.slug = $1`;
+    params.push(projectSlug);
+  }
+
+  sql += ` GROUP BY m.id, p.name, p.slug ORDER BY m.sort_order ASC, m.id ASC`;
+
+  const res = await query(sql, params);
+  return NextResponse.json({ modules: res.rows });
+}
+
+export async function POST(req: NextRequest) {
+  const user = await getCurrentUser();
+  if (!user || user.status !== "ACTIVE") {
+    return NextResponse.json({ error: "Chưa xác thực" }, { status: 401 });
+  }
+
+  const { projectId, name, filePatterns } = await req.json();
+
+  if (!projectId || !name) {
+    return NextResponse.json({ error: "Thiếu projectId hoặc tên nhóm test" }, { status: 400 });
+  }
+
+  const patterns = Array.isArray(filePatterns)
+    ? filePatterns
+    : (filePatterns || "")
+        .split(",")
+        .map((p: string) => p.trim())
+        .filter(Boolean);
+
+  const res = await query(
+    `INSERT INTO era_tester_modules (project_id, name, file_patterns)
+     VALUES ($1, $2, $3)
+     RETURNING *`,
+    [projectId, name.trim(), patterns]
+  );
+
+  return NextResponse.json({ success: true, module: res.rows[0] });
+}
