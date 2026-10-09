@@ -41,8 +41,23 @@ export async function PUT(
          updated_at = NOW()
      WHERE id = $4
      RETURNING *`,
-    [JSON.stringify(nodes), JSON.stringify(edges), title, id]
+    [nodes ? JSON.stringify(nodes) : null, edges ? JSON.stringify(edges) : null, title, id]
   );
 
   return NextResponse.json({ success: true, flow: res.rows[0] });
+}
+
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const user = await getCurrentUser();
+  if (!user || user.status !== "ACTIVE") {
+    return NextResponse.json({ error: "Chưa xác thực" }, { status: 401 });
+  }
+
+  const { id } = await params;
+  await query("DELETE FROM era_tester_flows WHERE id = $1", [id]);
+
+  return NextResponse.json({ success: true, message: "Đã xóa User Flow thành công" });
 }

@@ -53,23 +53,21 @@ export async function POST(req: NextRequest) {
   }
 
   const data = await req.json();
-  const {
-    moduleId,
-    flowId,
-    nodeId,
-    title,
-    inputData,
-    outputData,
-    expectedResult,
-    actualResult,
-    responsePayload,
-    evidenceUrls,
-    status = "NEW",
-    priority = "MEDIUM",
-    assignedTo,
-  } = data;
+  const modId = data.moduleId ?? data.module_id;
+  const fId = data.flowId ?? data.flow_id ?? null;
+  const nId = data.nodeId ?? data.node_id ?? null;
+  const title = (data.title || "").trim();
+  const inputData = data.inputData ?? data.input_data ?? "";
+  const outputData = data.outputData ?? data.output_data ?? "";
+  const expectedResult = data.expectedResult ?? data.expected_result ?? "";
+  const actualResult = data.actualResult ?? data.actual_result ?? "";
+  const responsePayload = data.responsePayload ?? data.response_payload ?? "";
+  const evidenceUrls = data.evidenceUrls ?? data.evidence_urls ?? [];
+  const status = data.status || "NEW";
+  const priority = data.priority || "MEDIUM";
+  const assignedTo = data.assignedTo ?? data.assigned_to ?? null;
 
-  if (!moduleId || !title) {
+  if (!modId || !title) {
     return NextResponse.json({ error: "Thiếu moduleId hoặc tiêu đề test case" }, { status: 400 });
   }
 
@@ -79,19 +77,19 @@ export async function POST(req: NextRequest) {
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
      RETURNING *`,
     [
-      moduleId,
-      flowId || null,
-      nodeId || null,
-      title.trim(),
-      inputData || "",
-      outputData || "",
-      expectedResult || "",
-      actualResult || "",
-      responsePayload || "",
-      evidenceUrls || [],
+      modId,
+      fId,
+      nId,
+      title,
+      inputData,
+      outputData,
+      expectedResult,
+      actualResult,
+      responsePayload,
+      evidenceUrls,
       status,
       priority,
-      assignedTo || null,
+      assignedTo,
       user.id,
     ]
   );
@@ -101,7 +99,7 @@ export async function POST(req: NextRequest) {
   // Nếu tạo test case trực tiếp ở trạng thái Bug (NEW) và có người phụ trách (Dev)
   if (status === "NEW" && assignedTo) {
     const devRes = await query("SELECT email FROM era_tester_users WHERE id = $1", [assignedTo]);
-    const modRes = await query("SELECT name FROM era_tester_modules WHERE id = $1", [moduleId]);
+    const modRes = await query("SELECT name FROM era_tester_modules WHERE id = $1", [modId]);
     if (devRes.rows.length > 0) {
       await sendBugReportEmail({
         devEmail: devRes.rows[0].email,

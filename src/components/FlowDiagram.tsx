@@ -25,75 +25,88 @@ import {
   CheckCircle2,
   Wrench,
   Eye,
-  Filter,
-  Sparkles,
-  Maximize2,
+  Plus,
+  ListChecks,
 } from "lucide-react";
 
 interface FlowDiagramProps {
   cases: TestCase[];
-  onSelectCase: (testCase: TestCase) => void;
+  flowNodes?: any[];
+  flowEdges?: any[];
+  onSelectStep: (step: { id: string; title: string; description?: string }) => void;
   onSaveFlow?: (nodes: Node[], edges: Edge[]) => void;
+  onAddStep?: (stepTitle: string) => void;
 }
 
-// Custom Node Component chuẩn UI-UX Pro Max (Zero Emojis, Pure SVG & Micro-interactions)
+// Custom Node Component hiển thị Bước và số lượng Checklist bên trong
 function TestStepNode({ data }: { data: any }) {
-  const { title, testCase, onSelect } = data;
-  const status = testCase?.status || "NEW";
-  const isGitImpacted = testCase?.is_impacted_by_git;
+  const { title, description, stepId, stepCases, onSelect } = data;
 
-  const statusMap: Record<
-    string,
-    {
-      border: string;
-      bg: string;
-      text: string;
-      icon: any;
-      label: string;
-      badgeBg: string;
-    }
-  > = {
+  // Tính toán trạng thái tổng thể của Bước dựa trên các checklist con
+  const cases: TestCase[] = stepCases || [];
+  const total = cases.length;
+  const bugs = cases.filter((c) => c.status === "NEW").length;
+  const fixing = cases.filter((c) => c.status === "FIX").length;
+  const verifying = cases.filter((c) => c.status === "VERIFY").length;
+  const passed = cases.filter((c) => c.status === "CLOSED").length;
+  const hasGit = cases.some((c) => c.is_impacted_by_git);
+
+  let status: "NEW" | "FIX" | "VERIFY" | "CLOSED" | "PENDING" = "PENDING";
+  if (bugs > 0) status = "NEW";
+  else if (fixing > 0) status = "FIX";
+  else if (verifying > 0) status = "VERIFY";
+  else if (total > 0 && passed === total) status = "CLOSED";
+
+  const statusMap = {
     NEW: {
-      border: "border-rose-500/80 hover:border-rose-400 hover:shadow-rose-500/20",
+      border: "border-rose-500/80 hover:border-rose-400 hover:shadow-rose-500/25",
       bg: "bg-slate-900/90",
       text: "text-rose-400",
       icon: AlertCircle,
-      label: "Bug / Open",
+      label: "Bug Phát Sinh",
       badgeBg: "bg-rose-500/15 border-rose-500/30 text-rose-300",
     },
     FIX: {
-      border: "border-sky-500/80 hover:border-sky-400 hover:shadow-sky-500/20",
+      border: "border-sky-500/80 hover:border-sky-400 hover:shadow-sky-500/25",
       bg: "bg-slate-900/90",
       text: "text-sky-400",
       icon: Wrench,
-      label: "Fixing",
+      label: "Dev Đang Sửa",
       badgeBg: "bg-sky-500/15 border-sky-500/30 text-sky-300",
     },
     VERIFY: {
-      border: "border-purple-500/80 hover:border-purple-400 hover:shadow-purple-500/20",
+      border: "border-purple-500/80 hover:border-purple-400 hover:shadow-purple-500/25",
       bg: "bg-slate-900/90",
       text: "text-purple-400",
       icon: Eye,
-      label: "Verifying",
+      label: "Chờ Xác Minh",
       badgeBg: "bg-purple-500/15 border-purple-500/30 text-purple-300",
     },
     CLOSED: {
-      border: "border-emerald-500/80 hover:border-emerald-400 hover:shadow-emerald-500/20",
+      border: "border-emerald-500/80 hover:border-emerald-400 hover:shadow-emerald-500/25",
       bg: "bg-slate-900/90",
       text: "text-emerald-400",
       icon: CheckCircle2,
-      label: "Passed",
+      label: "Kiểm Thử Đạt",
       badgeBg: "bg-emerald-500/15 border-emerald-500/30 text-emerald-300",
+    },
+    PENDING: {
+      border: "border-slate-700/80 hover:border-slate-500 hover:shadow-slate-500/15",
+      bg: "bg-slate-900/90",
+      text: "text-slate-400",
+      icon: ListChecks,
+      label: "Chưa Test",
+      badgeBg: "bg-slate-800 border-slate-700 text-slate-300",
     },
   };
 
-  const current = statusMap[status] || statusMap.NEW;
+  const current = statusMap[status];
   const Icon = current.icon;
 
   return (
     <div
-      onClick={() => onSelect && onSelect(testCase)}
-      className={`group relative min-w-[210px] max-w-[240px] rounded-2xl border-2 p-3.5 shadow-2xl backdrop-blur-xl transition-all duration-200 cursor-pointer hover:-translate-y-1 ${current.border} ${current.bg}`}
+      onClick={() => onSelect && onSelect({ id: stepId, title, description })}
+      className={`group relative min-w-[240px] max-w-[270px] rounded-2xl border-2 p-4 shadow-2xl backdrop-blur-xl transition-all duration-200 cursor-pointer hover:-translate-y-1 ${current.border} ${current.bg}`}
     >
       <Handle
         type="target"
@@ -103,12 +116,12 @@ function TestStepNode({ data }: { data: any }) {
 
       {/* Header bar: ID + Status + Git Alert */}
       <div className="flex items-center justify-between mb-2">
-        <span className="text-[10px] font-mono font-bold text-slate-400 px-1.5 py-0.5 rounded bg-slate-800/80 border border-slate-700/60">
-          #{testCase?.id || "?"}
+        <span className="text-[10px] font-mono font-bold text-slate-400 px-2 py-0.5 rounded-lg bg-slate-950 border border-slate-800">
+          {stepId}
         </span>
 
         <div className="flex items-center gap-1.5">
-          {isGitImpacted && (
+          {hasGit && (
             <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse">
               <GitCommit className="w-2.5 h-2.5" />
               GIT
@@ -124,18 +137,31 @@ function TestStepNode({ data }: { data: any }) {
         </div>
       </div>
 
-      {/* Title */}
-      <div className="font-semibold text-xs text-slate-100 group-hover:text-white transition line-clamp-2 leading-relaxed">
-        {title || testCase?.title || "Kịch Bản Kiểm Thử"}
+      {/* Step Title */}
+      <div className="font-bold text-xs text-slate-100 group-hover:text-sky-300 transition line-clamp-2 leading-relaxed">
+        {title}
       </div>
 
-      {/* Actual Result Error Notice */}
-      {testCase?.actual_result && (
-        <div className="mt-2 pt-2 border-t border-slate-800/80 flex items-start gap-1.5 text-[10.5px] text-rose-300/90 line-clamp-2">
-          <AlertCircle className="w-3 h-3 text-rose-400 shrink-0 mt-0.5" />
-          <span className="italic">{testCase.actual_result}</span>
+      {description && (
+        <div className="text-[10.5px] text-slate-400 mt-1 line-clamp-2">
+          {description}
         </div>
       )}
+
+      {/* Footer: Checklist progress count */}
+      <div className="mt-3 pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-[11px]">
+        <div className="flex items-center gap-1 text-slate-400">
+          <ListChecks className="w-3.5 h-3.5 text-sky-400" />
+          <span>Checklist: <strong>{total}</strong></span>
+        </div>
+
+        {total > 0 && (
+          <div className="flex items-center gap-1.5 font-mono text-[10px]">
+            {bugs > 0 && <span className="text-rose-400 font-bold">{bugs} Lỗi</span>}
+            <span className="text-emerald-400 font-bold">{passed}/{total} Đạt</span>
+          </div>
+        )}
+      </div>
 
       <Handle
         type="source"
@@ -148,128 +174,166 @@ function TestStepNode({ data }: { data: any }) {
 
 export default function FlowDiagram({
   cases,
-  onSelectCase,
+  flowNodes,
+  flowEdges,
+  onSelectStep,
+  onSaveFlow,
+  onAddStep,
 }: FlowDiagramProps) {
-  const [filterMode, setFilterMode] = useState<"all" | "bugs" | "git">("all");
-
-  const filteredCases = useMemo(() => {
-    if (filterMode === "bugs") return cases.filter((c) => c.status === "NEW");
-    if (filterMode === "git") return cases.filter((c) => c.is_impacted_by_git);
-    return cases;
-  }, [cases, filterMode]);
+  const [newStepTitle, setNewStepTitle] = useState("");
+  const [showAddStepModal, setShowAddStepModal] = useState(false);
 
   const nodeTypes = useMemo(() => ({ testStep: TestStepNode }), []);
 
-  // Tự động sinh nodes
-  const initialNodes: Node[] = useMemo(() => {
-    return filteredCases.map((c, index) => {
-      const col = index % 3;
-      const row = Math.floor(index / 3);
-      return {
-        id: `node-${c.id}`,
+  // Nếu không có custom flowNodes, tự động sinh nodes từ các bước mặc định hoặc từ cases
+  const defaultNodes: Node[] = useMemo(() => {
+    if (flowNodes && flowNodes.length > 0) {
+      return flowNodes.map((fn: any) => ({
+        ...fn,
         type: "testStep",
-        position: { x: col * 280 + 60, y: row * 180 + 70 },
         data: {
-          title: c.title,
-          testCase: c,
-          onSelect: onSelectCase,
+          ...fn.data,
+          stepId: fn.id,
+          stepCases: cases.filter((c) => c.node_id === fn.id),
+          onSelect: onSelectStep,
         },
-      };
-    });
-  }, [filteredCases, onSelectCase]);
+      }));
+    }
 
-  // Sinh edges liên kết
-  const initialEdges: Edge[] = useMemo(() => {
+    // Fallback: gom nhóm cases theo node_id hoặc tạo 3 bước mẫu
+    const stepIds = Array.from(new Set(cases.map((c) => c.node_id || "step-1")));
+    if (stepIds.length === 0) {
+      stepIds.push("step-1", "step-2");
+    }
+
+    return stepIds.map((sid, index) => ({
+      id: sid,
+      type: "testStep",
+      position: { x: index * 300 + 60, y: 120 },
+      data: {
+        title: `Bước ${index + 1}: ${sid === "step-1" ? "Khởi động & Mở trang" : sid === "step-2" ? "Thao tác người dùng" : "Kết quả & Điều hướng"}`,
+        stepId: sid,
+        stepCases: cases.filter((c) => (c.node_id || "step-1") === sid),
+        onSelect: onSelectStep,
+      },
+    }));
+  }, [flowNodes, cases, onSelectStep]);
+
+  const defaultEdges: Edge[] = useMemo(() => {
+    if (flowEdges && flowEdges.length > 0) return flowEdges;
+
     const edges: Edge[] = [];
-    for (let i = 0; i < filteredCases.length - 1; i++) {
-      const isUrgent =
-        filteredCases[i].is_impacted_by_git ||
-        filteredCases[i + 1].is_impacted_by_git ||
-        filteredCases[i].status === "NEW";
-
+    for (let i = 0; i < defaultNodes.length - 1; i++) {
       edges.push({
-        id: `edge-${filteredCases[i].id}-${filteredCases[i + 1].id}`,
-        source: `node-${filteredCases[i].id}`,
-        target: `node-${filteredCases[i + 1].id}`,
-        animated: isUrgent,
-        style: {
-          stroke: isUrgent ? "#f59e0b" : "#0284c7",
-          strokeWidth: 2,
-        },
+        id: `e-${defaultNodes[i].id}-${defaultNodes[i + 1].id}`,
+        source: defaultNodes[i].id,
+        target: defaultNodes[i + 1].id,
+        style: { stroke: "#38bdf8", strokeWidth: 2 },
         markerEnd: {
           type: MarkerType.ArrowClosed,
-          color: isUrgent ? "#f59e0b" : "#0284c7",
+          color: "#38bdf8",
           width: 16,
           height: 16,
         },
       });
     }
     return edges;
-  }, [filteredCases]);
+  }, [flowEdges, defaultNodes]);
 
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const [nodes, setNodes, onNodesChange] = useNodesState(defaultNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(defaultEdges);
 
-  // Sync state when filteredCases change
   React.useEffect(() => {
-    setNodes(initialNodes);
-    setEdges(initialEdges);
-  }, [initialNodes, initialEdges, setNodes, setEdges]);
+    setNodes(defaultNodes);
+    setEdges(defaultEdges);
+  }, [defaultNodes, defaultEdges, setNodes, setEdges]);
 
   const onConnect = useCallback(
-    (params: Connection) => setEdges((eds) => addEdge(params, eds)),
-    [setEdges]
+    (params: Connection) => {
+      setEdges((eds) => {
+        const next = addEdge(
+          {
+            ...params,
+            style: { stroke: "#38bdf8", strokeWidth: 2 },
+            markerEnd: { type: MarkerType.ArrowClosed, color: "#38bdf8" },
+          },
+          eds
+        );
+        if (onSaveFlow) onSaveFlow(nodes, next);
+        return next;
+      });
+    },
+    [nodes, onSaveFlow, setEdges]
   );
 
+  const handleAddStepSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newStepTitle.trim()) return;
+
+    const nextId = `step-${nodes.length + 1}`;
+    const newNode: Node = {
+      id: nextId,
+      type: "testStep",
+      position: { x: nodes.length * 300 + 60, y: 120 },
+      data: {
+        title: newStepTitle.trim(),
+        stepId: nextId,
+        stepCases: [],
+        onSelect: onSelectStep,
+      },
+    };
+
+    const nextNodes = [...nodes, newNode];
+    let nextEdges = edges;
+
+    if (nodes.length > 0) {
+      const lastNode = nodes[nodes.length - 1];
+      nextEdges = [
+        ...edges,
+        {
+          id: `e-${lastNode.id}-${nextId}`,
+          source: lastNode.id,
+          target: nextId,
+          style: { stroke: "#38bdf8", strokeWidth: 2 },
+          markerEnd: { type: MarkerType.ArrowClosed, color: "#38bdf8" },
+        },
+      ];
+    }
+
+    setNodes(nextNodes);
+    setEdges(nextEdges);
+    if (onSaveFlow) onSaveFlow(nextNodes, nextEdges);
+
+    setNewStepTitle("");
+    setShowAddStepModal(false);
+  };
+
   return (
-    <div className="w-full h-full min-h-[540px] rounded-2xl border border-slate-800/80 bg-slate-950 overflow-hidden relative shadow-inner">
+    <div className="w-full h-full min-h-[560px] rounded-2xl border border-slate-800/80 bg-slate-950 overflow-hidden relative shadow-inner">
       {/* Top Floating Control Bar */}
-      <div className="absolute top-4 left-4 z-10 flex flex-wrap items-center gap-2 bg-slate-900/80 backdrop-blur-xl border border-slate-800/90 p-1.5 rounded-2xl shadow-xl text-xs">
+      <div className="absolute top-4 left-4 z-10 flex items-center gap-2 bg-slate-900/80 backdrop-blur-xl border border-slate-800/90 p-1.5 rounded-2xl shadow-xl text-xs">
         <button
-          onClick={() => setFilterMode("all")}
-          className={`px-3 py-1.5 rounded-xl font-semibold transition cursor-pointer ${
-            filterMode === "all"
-              ? "bg-sky-600 text-white shadow-sm"
-              : "text-slate-400 hover:text-white hover:bg-slate-800/60"
-          }`}
+          onClick={() => setShowAddStepModal(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold bg-sky-600 hover:bg-sky-500 text-white shadow-sm transition cursor-pointer"
         >
-          Tất cả ({cases.length})
+          <Plus className="w-3.5 h-3.5" />
+          <span>Thêm Bước Vào Sơ Đồ</span>
         </button>
 
-        <button
-          onClick={() => setFilterMode("bugs")}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold transition cursor-pointer ${
-            filterMode === "bugs"
-              ? "bg-rose-600 text-white shadow-sm"
-              : "text-rose-400 hover:text-rose-300 hover:bg-rose-950/30"
-          }`}
-        >
-          <AlertCircle className="w-3.5 h-3.5" />
-          Chỉ xem Lỗi ({cases.filter((c) => c.status === "NEW").length})
-        </button>
-
-        <button
-          onClick={() => setFilterMode("git")}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold transition cursor-pointer ${
-            filterMode === "git"
-              ? "bg-amber-600 text-white shadow-sm"
-              : "text-amber-400 hover:text-amber-300 hover:bg-amber-950/30"
-          }`}
-        >
-          <GitCommit className="w-3.5 h-3.5" />
-          Cần Test Lại Do Git ({cases.filter((c) => c.is_impacted_by_git).length})
-        </button>
+        <span className="text-[11px] text-slate-400 pl-2 pr-1 hidden sm:inline">
+          💡 Bấm vào bất kỳ Bước nào để quản lý Checklist kịch bản
+        </span>
       </div>
 
-      {/* Legend Badge Bar at top right */}
+      {/* Legend Badge Bar */}
       <div className="absolute top-4 right-4 z-10 hidden sm:flex items-center gap-3 bg-slate-900/80 backdrop-blur-xl border border-slate-800/90 px-3.5 py-2 rounded-2xl text-[11px] font-medium shadow-xl">
         <span className="flex items-center gap-1.5 text-emerald-400">
           <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/50" />
-          Passed
+          Đạt Hết
         </span>
         <span className="flex items-center gap-1.5 text-rose-400">
           <span className="w-2 h-2 rounded-full bg-rose-500 shadow-sm shadow-rose-500/50" />
-          Bug
+          Có Lỗi (Bug)
         </span>
         <span className="flex items-center gap-1.5 text-amber-400">
           <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shadow-sm shadow-amber-400/50" />
@@ -288,18 +352,52 @@ export default function FlowDiagram({
       >
         <Controls className="!bg-slate-900/90 !border-slate-800/80 !text-white rounded-2xl !backdrop-blur-md shadow-2xl" />
         <MiniMap
-          nodeColor={(n) => {
-            const status = (n.data as any)?.testCase?.status;
-            if (status === "CLOSED") return "#10b981";
-            if (status === "NEW") return "#f43f5e";
-            if (status === "FIX") return "#38bdf8";
-            return "#a855f7";
-          }}
+          nodeColor="#38bdf8"
           maskColor="rgba(9, 13, 22, 0.75)"
           className="!bg-slate-900/90 !border-slate-800/80 rounded-2xl !backdrop-blur-md"
         />
         <Background variant={BackgroundVariant.Dots} gap={20} size={1.2} color="#1e293b" />
       </ReactFlow>
+
+      {/* Modal Thêm Bước */}
+      {showAddStepModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+          <div className="w-full max-w-sm p-6 bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl">
+            <h4 className="text-sm font-bold text-white mb-3">Thêm Bước Kiểm Thử Mới</h4>
+            <form onSubmit={handleAddStepSubmit} className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  Tên bước trong sơ đồ
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newStepTitle}
+                  onChange={(e) => setNewStepTitle(e.target.value)}
+                  placeholder="VD: Nhấn nút Gửi và Kiểm Tra Thông Báo"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-sky-500"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddStepModal(false)}
+                  className="px-3 py-1.5 text-xs text-slate-400 hover:text-white"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-1.5 bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold rounded-xl shadow-md cursor-pointer"
+                >
+                  Thêm Bước
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
