@@ -10,7 +10,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Email và mật khẩu là bắt buộc" }, { status: 400 });
     }
 
-    const cleanEmail = email.trim().toLowerCase();
+    let cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail.includes("@")) {
+      cleanEmail = `${cleanEmail}@eragroup.com.vn`;
+    }
+
+    if (!cleanEmail.endsWith("@eragroup.com.vn")) {
+      return NextResponse.json(
+        { error: "Hệ thống chỉ chấp nhận email nội bộ có đuôi @eragroup.com.vn" },
+        { status: 400 }
+      );
+    }
+
     const existing = await query("SELECT id FROM era_tester_users WHERE email = $1 LIMIT 1", [
       cleanEmail,
     ]);
@@ -23,7 +34,7 @@ export async function POST(req: NextRequest) {
     const totalUsers = await query("SELECT COUNT(*) FROM era_tester_users");
     const count = parseInt(totalUsers.rows[0].count, 10);
     const isFirstUser = count === 0;
-    const isInitialAdmin = cleanEmail === (process.env.ADMIN_INITIAL_EMAIL || "admin@eraweb.io").toLowerCase();
+    const isInitialAdmin = cleanEmail === (process.env.ADMIN_INITIAL_EMAIL || "admin@eragroup.com.vn").toLowerCase();
 
     let role = "TESTER";
     if (isFirstUser || isInitialAdmin) {

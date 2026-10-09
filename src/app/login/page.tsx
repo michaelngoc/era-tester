@@ -19,11 +19,16 @@ export default function LoginPage() {
     setError(null);
     setPendingNotice(null);
 
+    let normalizedEmail = email.trim().toLowerCase();
+    if (normalizedEmail && !normalizedEmail.includes("@")) {
+      normalizedEmail = `${normalizedEmail}@eragroup.com.vn`;
+    }
+
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: normalizedEmail, password }),
       });
 
       const data = await res.json();
@@ -77,19 +82,22 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">
-              Email cá nhân
+              Email công ty (@eragroup.com.vn)
             </label>
             <div className="relative">
               <Mail className="absolute left-3.5 top-3 w-4 h-4 text-slate-500" />
               <input
-                type="email"
+                type="text"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="name@eraweb.io"
+                placeholder="ten.ho@eragroup.com.vn"
                 className="w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition"
               />
             </div>
+            <p className="mt-1.5 text-[11px] text-slate-400">
+              Có thể nhập đầy đủ hoặc chỉ tên user (ví dụ: <span className="text-sky-300 font-mono">ten.ho</span>)
+            </p>
           </div>
 
           <div>

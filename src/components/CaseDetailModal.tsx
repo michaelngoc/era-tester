@@ -402,7 +402,7 @@ export default function CaseDetailModal({
                   rows={6}
                   value={formData.input_data || ""}
                   onChange={(e) => setFormData({ ...formData, input_data: e.target.value })}
-                  placeholder="VD: { email: 'admin@eraweb.io', role: 'admin' }"
+                  placeholder="VD: { email: 'ten.ho@eragroup.com.vn', role: 'admin' }"
                   className="w-full p-3 bg-slate-950 border border-slate-800 rounded-2xl text-xs font-mono text-slate-200 focus:outline-none focus:border-sky-500 transition"
                 />
               </div>

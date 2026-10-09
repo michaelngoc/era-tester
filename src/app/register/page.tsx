@@ -31,11 +31,22 @@ export default function RegisterPage() {
     setError(null);
     setSuccessMsg(null);
 
+    let normalizedEmail = email.trim().toLowerCase();
+    if (normalizedEmail && !normalizedEmail.includes("@")) {
+      normalizedEmail = `${normalizedEmail}@eragroup.com.vn`;
+    }
+
+    if (!normalizedEmail.endsWith("@eragroup.com.vn")) {
+      setError("Hệ thống chỉ chấp nhận email nội bộ có đuôi @eragroup.com.vn");
+      setLoading(false);
+      return;
+    }
+
     try {
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fullName, email, password, role }),
+        body: JSON.stringify({ fullName, email: normalizedEmail, password, role }),
       });
 
       const data = await res.json();
@@ -104,19 +115,22 @@ export default function RegisterPage() {
 
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">
-              Email cá nhân
+              Email công ty (@eragroup.com.vn)
             </label>
             <div className="relative">
               <Mail className="absolute left-3.5 top-3 w-4 h-4 text-slate-500" />
               <input
-                type="email"
+                type="text"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="name@eraweb.io"
+                placeholder="ten.ho@eragroup.com.vn"
                 className="w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:emerald-500 transition"
               />
             </div>
+            <p className="mt-1.5 text-[11px] text-slate-400">
+              Có thể nhập đầy đủ hoặc chỉ tên user (ví dụ: <span className="text-emerald-400 font-mono">ten.ho</span>)
+            </p>
           </div>
 
           <div>

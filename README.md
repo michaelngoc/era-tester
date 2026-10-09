@@ -20,4 +20,4 @@ npm run dev # Port 3008
 ```
 
 Truy cập: `http://localhost:3008`
-Tài khoản Super Admin mặc định: `admin@eraweb.io` / `Admin@123456`
+Tài khoản Super Admin mặc định: `admin@eragroup.com.vn` / `Admin@123456`

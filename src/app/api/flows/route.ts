@@ -147,7 +147,7 @@ export async function POST(req: NextRequest) {
         ($1, $2, 'step-3', 'Click nút Login khi form hợp lệ', 'Click submit', 'Nút hiển thị loading spinner và disable chống double click', 'Nút quay spinner tốt', 'CLOSED', 'HIGH'),
         ($1, $2, 'step-4', 'Đăng nhập sai mật khẩu', 'password: "sai"', 'Báo lỗi 401: Email hoặc mật khẩu không chính xác', 'Báo lỗi đúng chuẩn', 'CLOSED', 'HIGH'),
         ($1, $2, 'step-4', 'Đăng nhập tài khoản chưa duyệt (PENDING)', 'status: PENDING', 'Báo lỗi 403: Tài khoản đang chờ Super Admin phê duyệt', 'Báo lỗi đúng chuẩn', 'CLOSED', 'HIGH'),
-        ($1, $2, 'step-4', 'Đăng nhập thành công với Super Admin', 'admin@eraweb.io', 'Trả về HTTP 200, lưu cookie session và điều hướng sang Dashboard', 'Chuyển hướng mượt mà', 'CLOSED', 'CRITICAL');`,
+        ($1, $2, 'step-4', 'Đăng nhập thành công với Super Admin', 'admin@eragroup.com.vn', 'Trả về HTTP 200, lưu cookie session và điều hướng sang Dashboard', 'Chuyển hướng mượt mà', 'CLOSED', 'CRITICAL');`,
       [moduleId, newFlow.id]
     );
   }

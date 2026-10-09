@@ -10,7 +10,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Vui lòng nhập email và mật khẩu" }, { status: 400 });
     }
 
-    const cleanEmail = email.trim().toLowerCase();
+    let cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail.includes("@")) {
+      cleanEmail = `${cleanEmail}@eragroup.com.vn`;
+    }
     const res = await query(
       "SELECT id, email, password_hash, full_name, role, status FROM era_tester_users WHERE email = $1 LIMIT 1",
       [cleanEmail]
