@@ -555,23 +555,23 @@ export default function DashboardPage() {
   }, [cases]);
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col selection:bg-sky-500 selection:text-white">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex flex-col selection:bg-sky-500 selection:text-white transition-colors duration-150">
       <Navbar user={user} />
 
       {/* Main Workspace */}
       <div className="flex-1 flex overflow-hidden">
         {/* Left Sidebar: Projects & Modules */}
-        <aside className="w-80 bg-slate-900/60 backdrop-blur-xl border-r border-slate-800/80 flex flex-col shrink-0">
+        <aside className="w-80 bg-white/80 dark:bg-slate-900/60 backdrop-blur-xl border-r border-slate-200 dark:border-slate-800/80 flex flex-col shrink-0 transition-colors duration-150">
           {/* Projects Select Section */}
-          <div className="p-4 border-b border-slate-800/80">
+          <div className="p-4 border-b border-slate-200 dark:border-slate-800/80">
             <div className="flex items-center justify-between mb-2.5">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                 Dự Án Đang Kiểm Thử
               </span>
               <button
                 onClick={handleOpenCreateProject}
                 title="Tạo dự án mới"
-                className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-semibold text-sky-400 bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/20 transition cursor-pointer"
+                className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-semibold text-sky-600 dark:text-sky-400 bg-sky-50 hover:bg-sky-100 dark:bg-sky-500/10 dark:hover:bg-sky-500/20 border border-sky-200 dark:border-sky-500/20 transition cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Thêm</span>
@@ -588,12 +588,12 @@ export default function DashboardPage() {
                     className={`group w-full flex items-center justify-between px-3 py-2 rounded-2xl text-xs font-semibold transition-all duration-150 cursor-pointer ${
                       isActive
                         ? "bg-gradient-to-r from-sky-600 to-indigo-600 text-white shadow-lg shadow-sky-600/25 border border-sky-400/30"
-                        : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60"
                     }`}
                   >
                     <div className="flex items-center gap-2 truncate">
                       <FolderGit2
-                        className={`w-4 h-4 shrink-0 ${isActive ? "text-white" : "text-sky-400"}`}
+                        className={`w-4 h-4 shrink-0 ${isActive ? "text-white" : "text-sky-500 dark:text-sky-400"}`}
                       />
                       <span className="truncate">{p.name}</span>
                     </div>
@@ -611,7 +611,7 @@ export default function DashboardPage() {
                           type="button"
                           onClick={(e) => handleOpenEditProject(p, e)}
                           title="Sửa dự án"
-                          className="p-1 hover:bg-white/20 rounded transition text-slate-300 hover:text-white"
+                          className="p-1 hover:bg-white/20 rounded transition text-slate-400 hover:text-slate-700 dark:text-slate-300 dark:hover:text-white"
                         >
                           <Pencil className="w-3 h-3" />
                         </button>
@@ -619,7 +619,7 @@ export default function DashboardPage() {
                           type="button"
                           onClick={(e) => handleDeleteProject(p, e)}
                           title="Xóa dự án"
-                          className="p-1 hover:bg-rose-500/30 rounded transition text-slate-300 hover:text-rose-200"
+                          className="p-1 hover:bg-rose-500/20 rounded transition text-slate-400 hover:text-rose-600 dark:text-slate-300 dark:hover:text-rose-300"
                         >
                           <Trash2 className="w-3 h-3" />
                         </button>
@@ -630,7 +630,7 @@ export default function DashboardPage() {
               })}
 
               {projects.length === 0 && (
-                <div className="text-center py-4 text-xs text-slate-500 border border-dashed border-slate-800/80 rounded-2xl">
+                <div className="text-center py-4 text-xs text-slate-400 dark:text-slate-500 border border-dashed border-slate-200 dark:border-slate-800/80 rounded-2xl">
                   Chưa có dự án nào. Bấm &quot;Thêm&quot; để tạo.
                 </div>
               )}
@@ -640,15 +640,15 @@ export default function DashboardPage() {
           {/* Modules List Section */}
           <div className="flex-1 p-4 overflow-y-auto">
             <div className="flex items-center justify-between mb-2.5">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                Nhóm Test / Modules
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                Nhóm Kiểm Thử (Modules)
               </span>
 
               <button
                 onClick={handleOpenCreateModule}
                 title="Tạo nhóm kiểm thử mới"
                 disabled={!selectedProject}
-                className="flex items-center gap-1 px-2 py-1 rounded-xl text-[11px] font-semibold text-sky-400 bg-sky-500/10 hover:bg-sky-500/20 disabled:opacity-40 border border-sky-500/20 transition-all cursor-pointer"
+                className="flex items-center gap-1 px-2 py-1 rounded-xl text-[11px] font-semibold text-sky-600 dark:text-sky-400 bg-sky-50 hover:bg-sky-100 dark:bg-sky-500/10 dark:hover:bg-sky-500/20 disabled:opacity-40 border border-sky-200 dark:border-sky-500/20 transition-all cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Thêm</span>
@@ -664,13 +664,13 @@ export default function DashboardPage() {
                     onClick={() => setSelectedModule(m)}
                     className={`group w-full flex items-center justify-between px-3 py-2.5 rounded-2xl text-xs font-medium transition-all duration-150 cursor-pointer ${
                       isSelected
-                        ? "bg-slate-800/90 text-sky-300 font-semibold border border-sky-500/30 shadow-sm"
-                        : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 border border-transparent"
+                        ? "bg-sky-50/80 dark:bg-slate-800/90 text-sky-700 dark:text-sky-300 font-semibold border border-sky-300 dark:border-sky-500/30 shadow-sm"
+                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100/70 dark:hover:bg-slate-800/40 border border-transparent"
                     }`}
                   >
                     <div className="flex items-center gap-2 truncate">
                       <Layers
-                        className={`w-4 h-4 shrink-0 ${isSelected ? "text-sky-400" : "text-slate-500"}`}
+                        className={`w-4 h-4 shrink-0 ${isSelected ? "text-sky-600 dark:text-sky-400" : "text-slate-400 dark:text-slate-500"}`}
                       />
                       <span className="truncate">{m.name}</span>
                     </div>
@@ -682,7 +682,7 @@ export default function DashboardPage() {
                           <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
                         </span>
                       )}
-                      <span className="px-1.5 py-0.5 rounded-md text-[10px] font-mono bg-slate-950 border border-slate-800 text-slate-400">
+                      <span className="px-1.5 py-0.5 rounded-md text-[10px] font-mono bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400">
                         {m.total_cases || 0}
                       </span>
 
@@ -691,16 +691,16 @@ export default function DashboardPage() {
                         <button
                           type="button"
                           onClick={(e) => handleOpenEditModule(m, e)}
-                          title="Sửa nhóm test"
-                          className="p-1 hover:bg-slate-700 rounded transition text-slate-400 hover:text-sky-300"
+                          title="Sửa nhóm kiểm thử"
+                          className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition text-slate-500 dark:text-slate-400 hover:text-sky-600 dark:hover:text-sky-300"
                         >
                           <Pencil className="w-3 h-3" />
                         </button>
                         <button
                           type="button"
                           onClick={(e) => handleDeleteModule(m, e)}
-                          title="Xóa nhóm test"
-                          className="p-1 hover:bg-slate-700 rounded transition text-slate-400 hover:text-rose-400"
+                          title="Xóa nhóm kiểm thử"
+                          className="p-1 hover:bg-rose-100 dark:hover:bg-slate-700 rounded transition text-slate-500 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400"
                         >
                           <Trash2 className="w-3 h-3" />
                         </button>
@@ -711,8 +711,8 @@ export default function DashboardPage() {
               })}
 
               {modules.length === 0 && (
-                <div className="text-center py-8 text-xs text-slate-500 border border-dashed border-slate-800/80 rounded-2xl">
-                  Chưa có nhóm test nào.
+                <div className="text-center py-8 text-xs text-slate-400 dark:text-slate-500 border border-dashed border-slate-200 dark:border-slate-800/80 rounded-2xl">
+                  Chưa có nhóm kiểm thử nào.
                 </div>
               )}
             </div>
@@ -722,25 +722,25 @@ export default function DashboardPage() {
         {/* Center Main Stage */}
         <main className="flex-1 flex flex-col p-5 overflow-hidden">
           {/* Top Bar: Module Title & Flow Selector */}
-          <div className="pb-4 mb-4 border-b border-slate-800/80 space-y-3">
+          <div className="pb-4 mb-4 border-b border-slate-200 dark:border-slate-800/80 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <div className="flex items-center gap-2.5">
-                  <h2 className="text-lg font-bold text-white tracking-tight">
+                  <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">
                     {selectedModule?.name || "Chọn nhóm kiểm thử"}
                   </h2>
 
                   {selectedModule?.file_patterns?.length > 0 && (
-                    <span className="text-[11px] font-mono px-2 py-0.5 rounded-lg bg-slate-900 text-sky-400 border border-sky-500/25">
+                    <span className="text-[11px] font-mono px-2 py-0.5 rounded-lg bg-sky-50 dark:bg-slate-900 text-sky-700 dark:text-sky-400 border border-sky-200 dark:border-sky-500/25">
                       Git: {selectedModule.file_patterns.join(", ")}
                     </span>
                   )}
                 </div>
 
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Dự án: <strong className="text-slate-200">{selectedProject?.name || "Chưa chọn"}</strong>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Dự án: <strong className="text-slate-800 dark:text-slate-200">{selectedProject?.name || "Chưa chọn"}</strong>
                   {selectedProject?.github_repo && (
-                    <span className="ml-2 font-mono text-[11px] text-slate-500">
+                    <span className="ml-2 font-mono text-[11px] text-slate-400 dark:text-slate-500">
                       ({selectedProject.github_repo})
                     </span>
                   )}
@@ -749,17 +749,17 @@ export default function DashboardPage() {
 
               {/* View Mode Switcher & Add Button */}
               <div className="flex items-center gap-2.5">
-                <div className="flex items-center p-1 bg-slate-900 border border-slate-800 rounded-2xl shadow-inner">
+                <div className="flex items-center p-1 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-inner">
                   <button
                     onClick={() => setViewMode("flow")}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all duration-150 cursor-pointer ${
                       viewMode === "flow"
                         ? "bg-sky-600 text-white shadow-md shadow-sky-600/20"
-                        : "text-slate-400 hover:text-white"
+                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                     }`}
                   >
                     <Network className="w-3.5 h-3.5" />
-                    <span>Sơ Đồ User Flow</span>
+                    <span>Sơ Đồ Luồng (User Flow)</span>
                   </button>
 
                   <button
@@ -767,11 +767,11 @@ export default function DashboardPage() {
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all duration-150 cursor-pointer ${
                       viewMode === "kanban"
                         ? "bg-sky-600 text-white shadow-md shadow-sky-600/20"
-                        : "text-slate-400 hover:text-white"
+                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                     }`}
                   >
                     <Kanban className="w-3.5 h-3.5" />
-                    <span>Bảng Trạng Thái</span>
+                    <span>Bảng Trạng Thái (Kanban)</span>
                   </button>
                 </div>
 
@@ -781,17 +781,17 @@ export default function DashboardPage() {
                   className="flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 disabled:opacity-50 text-white text-xs font-bold rounded-2xl transition-all shadow-lg shadow-sky-600/20 cursor-pointer"
                 >
                   <Plus className="w-4 h-4" />
-                  <span>Thêm Test Case</span>
+                  <span>Thêm Kịch Bản</span>
                 </button>
               </div>
             </div>
 
             {/* User Flow Selector Strip */}
-            <div className="p-2.5 rounded-2xl bg-slate-900/90 border border-slate-800/90 flex flex-wrap items-center justify-between gap-2.5">
+            <div className="p-2.5 rounded-2xl bg-white/90 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800/90 shadow-sm flex flex-wrap items-center justify-between gap-2.5">
               <div className="flex items-center gap-2 overflow-x-auto py-0.5">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5 mr-1 shrink-0">
-                  <Workflow className="w-3.5 h-3.5 text-sky-400" />
-                  User Flow:
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mr-1 shrink-0">
+                  <Workflow className="w-3.5 h-3.5 text-sky-500 dark:text-sky-400" />
+                  Luồng Thao Tác:
                 </span>
 
                 {flows.map((flow) => {
@@ -801,14 +801,14 @@ export default function DashboardPage() {
                       key={flow.id}
                       className={`flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold transition cursor-pointer shrink-0 border ${
                         isCur
-                          ? "bg-sky-500/20 text-sky-300 border-sky-500/40 shadow-sm"
-                          : "bg-slate-950 text-slate-400 border-slate-800 hover:text-slate-200"
+                          ? "bg-sky-50 dark:bg-sky-500/20 text-sky-700 dark:text-sky-300 border-sky-300 dark:border-sky-500/40 shadow-sm"
+                          : "bg-slate-50 dark:bg-slate-950 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:text-slate-900 dark:hover:text-slate-200"
                       }`}
                       onClick={() => setSelectedFlow(flow)}
                     >
                       <span>{flow.title}</span>
                       {flow.total_cases > 0 && (
-                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-900 text-slate-400">
+                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-200 dark:bg-slate-900 text-slate-600 dark:text-slate-400">
                           {flow.total_cases}
                         </span>
                       )}
@@ -820,8 +820,8 @@ export default function DashboardPage() {
                           e.stopPropagation();
                           handleDeleteFlow(flow);
                         }}
-                        title="Xóa User Flow này"
-                        className="ml-1 text-slate-500 hover:text-rose-400 transition"
+                        title="Xóa Luồng Thao Tác này"
+                        className="ml-1 text-slate-400 hover:text-rose-600 dark:text-slate-500 dark:hover:text-rose-400 transition"
                       >
                         <Trash2 className="w-3 h-3" />
                       </button>
@@ -830,7 +830,7 @@ export default function DashboardPage() {
                 })}
 
                 {flows.length === 0 && (
-                  <span className="text-xs text-slate-500 italic">Chưa có User Flow nào</span>
+                  <span className="text-xs text-slate-400 dark:text-slate-500 italic">Chưa có Luồng thao tác nào</span>
                 )}
               </div>
 
@@ -840,16 +840,16 @@ export default function DashboardPage() {
                   onClick={() =>
                     setFlowModal({
                       open: true,
-                      title: "Luồng Đăng Nhập & Validate Form",
+                      title: "Luồng Đăng Nhập & Kiểm Tra Biểu Mẫu",
                       templateType: "login",
                     })
                   }
                   disabled={!selectedModule}
-                  title="Tạo sẵn mẫu Login: 4 bước và 8 kịch bản testcases cho ô input, nút login, báo lỗi sai pass..."
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/25 transition cursor-pointer"
+                  title="Tạo sẵn mẫu Login: 4 bước và 8 kịch bản kiểm thử cho ô input, nút login, báo lỗi sai mật khẩu..."
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/20 border border-emerald-200 dark:border-emerald-500/25 transition cursor-pointer"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>+ Mẫu Flow Đăng Nhập</span>
+                  <span>+ Mẫu Luồng Đăng Nhập</span>
                 </button>
 
                 <button
@@ -861,73 +861,73 @@ export default function DashboardPage() {
                     })
                   }
                   disabled={!selectedModule}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold text-sky-400 bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/25 transition cursor-pointer"
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold text-sky-700 dark:text-sky-400 bg-sky-50 hover:bg-sky-100 dark:bg-sky-500/10 dark:hover:bg-sky-500/20 border border-sky-200 dark:border-sky-500/25 transition cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  <span>Tạo Flow Mới</span>
+                  <span>Tạo Luồng Mới</span>
                 </button>
               </div>
             </div>
 
             {/* KPI Metrics Strip */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
-              <div className="p-2.5 rounded-2xl bg-slate-900/80 border border-slate-800/80">
-                <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">
+              <div className="p-2.5 rounded-2xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800/80 shadow-sm">
+                <div className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-0.5">
                   Tổng Kịch Bản
                 </div>
-                <div className="text-lg font-bold font-mono text-white">{stats.total}</div>
+                <div className="text-lg font-bold font-mono text-slate-900 dark:text-white">{stats.total}</div>
               </div>
 
-              <div className="p-2.5 rounded-2xl bg-slate-900/80 border border-slate-800/80">
-                <div className="text-[10px] font-semibold text-emerald-400 uppercase tracking-wider mb-0.5 flex items-center gap-1">
+              <div className="p-2.5 rounded-2xl bg-emerald-50/50 dark:bg-slate-900/80 border border-emerald-200 dark:border-slate-800/80">
+                <div className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-0.5 flex items-center gap-1">
                   <CheckCircle2 className="w-3 h-3" />
-                  Đã Pass
+                  Đã Đạt (Passed)
                 </div>
-                <div className="text-lg font-bold font-mono text-emerald-300">{stats.passed}</div>
+                <div className="text-lg font-bold font-mono text-emerald-600 dark:text-emerald-300">{stats.passed}</div>
               </div>
 
-              <div className="p-2.5 rounded-2xl bg-slate-900/80 border border-slate-800/80">
-                <div className="text-[10px] font-semibold text-rose-400 uppercase tracking-wider mb-0.5 flex items-center gap-1">
+              <div className="p-2.5 rounded-2xl bg-rose-50/50 dark:bg-slate-900/80 border border-rose-200 dark:border-slate-800/80">
+                <div className="text-[10px] font-semibold text-rose-600 dark:text-rose-400 uppercase tracking-wider mb-0.5 flex items-center gap-1">
                   <AlertCircle className="w-3 h-3" />
-                  Báo Lỗi (New)
+                  Lỗi Phát Sinh
                 </div>
-                <div className="text-lg font-bold font-mono text-rose-300">{stats.bugs}</div>
+                <div className="text-lg font-bold font-mono text-rose-600 dark:text-rose-300">{stats.bugs}</div>
               </div>
 
-              <div className="p-2.5 rounded-2xl bg-slate-900/80 border border-slate-800/80">
-                <div className="text-[10px] font-semibold text-sky-400 uppercase tracking-wider mb-0.5 flex items-center gap-1">
+              <div className="p-2.5 rounded-2xl bg-sky-50/50 dark:bg-slate-900/80 border border-sky-200 dark:border-slate-800/80">
+                <div className="text-[10px] font-semibold text-sky-600 dark:text-sky-400 uppercase tracking-wider mb-0.5 flex items-center gap-1">
                   <Wrench className="w-3 h-3" />
-                  Dev Đang Sửa
+                  Đang Khắc Phục
                 </div>
-                <div className="text-lg font-bold font-mono text-sky-300">{stats.fixing}</div>
+                <div className="text-lg font-bold font-mono text-sky-600 dark:text-sky-300">{stats.fixing}</div>
               </div>
 
-              <div className="p-2.5 rounded-2xl bg-slate-900/80 border border-slate-800/80">
-                <div className="text-[10px] font-semibold text-purple-400 uppercase tracking-wider mb-0.5 flex items-center gap-1">
+              <div className="p-2.5 rounded-2xl bg-purple-50/50 dark:bg-slate-900/80 border border-purple-200 dark:border-slate-800/80">
+                <div className="text-[10px] font-semibold text-purple-600 dark:text-purple-400 uppercase tracking-wider mb-0.5 flex items-center gap-1">
                   <Eye className="w-3 h-3" />
                   Chờ Xác Minh
                 </div>
-                <div className="text-lg font-bold font-mono text-purple-300">{stats.verify}</div>
+                <div className="text-lg font-bold font-mono text-purple-600 dark:text-purple-300">{stats.verify}</div>
               </div>
 
-              <div className="p-2.5 rounded-2xl bg-slate-900/80 border border-amber-900/40 bg-amber-950/10">
-                <div className="text-[10px] font-semibold text-amber-400 uppercase tracking-wider mb-0.5 flex items-center gap-1">
+              <div className="p-2.5 rounded-2xl bg-amber-50/50 dark:bg-amber-950/10 border border-amber-200 dark:border-amber-900/40">
+                <div className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider mb-0.5 flex items-center gap-1">
                   <GitCommit className="w-3 h-3 animate-pulse" />
-                  Cần Re-Test (Git)
+                  Cần Kiểm Lại (Git)
                 </div>
-                <div className="text-lg font-bold font-mono text-amber-300">{stats.gitImpacted}</div>
+                <div className="text-lg font-bold font-mono text-amber-600 dark:text-amber-300">{stats.gitImpacted}</div>
               </div>
             </div>
 
             {/* Instant Search Bar */}
             <div className="relative">
-              <Search className="absolute left-3.5 top-2.5 w-4 h-4 text-slate-500" />
+              <Search className="absolute left-3.5 top-2.5 w-4 h-4 text-slate-400 dark:text-slate-500" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Tìm nhanh kịch bản kiểm thử theo tên, input, kết quả thực tế..."
-                className="w-full pl-10 pr-4 py-2 bg-slate-900/90 border border-slate-800 rounded-2xl text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-500 transition shadow-inner"
+                placeholder="Tìm nhanh kịch bản kiểm thử theo tên, dữ liệu đầu vào, kết quả thực tế..."
+                className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-2xl text-xs text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-sky-500 transition shadow-inner"
               />
             </div>
           </div>
@@ -948,27 +948,27 @@ export default function DashboardPage() {
                   onSaveFlow={(nodes, edges) => handleSaveFlowLayout(nodes, edges)}
                 />
               ) : (
-                <div className="h-full flex flex-col items-center justify-center text-center p-8 border border-dashed border-slate-800/80 rounded-3xl bg-slate-900/30">
-                  <Workflow className="w-12 h-12 text-slate-600 mb-3" />
-                  <h3 className="text-sm font-bold text-slate-300">
-                    Chưa Có User Flow Cho Nhóm Này
+                <div className="h-full flex flex-col items-center justify-center text-center p-8 border border-dashed border-slate-300 dark:border-slate-800/80 rounded-3xl bg-white/50 dark:bg-slate-900/30">
+                  <Workflow className="w-12 h-12 text-slate-400 dark:text-slate-600 mb-3" />
+                  <h3 className="text-sm font-bold text-slate-800 dark:text-slate-300">
+                    Chưa Có Luồng Thao Tác Cho Nhóm Này
                   </h3>
                   <p className="text-xs text-slate-500 mt-1 max-w-md leading-relaxed">
-                    User Flow giúp tester mô phỏng trực quan từng bước người dùng thao tác (VD: Vào trang login ➔ Nhập user/pass ➔ Nhấn submit ➔ Báo lỗi) và quản lý checklist kiểm thử từng bước.
+                    Sơ đồ luồng (User Flow) giúp tester mô phỏng trực quan từng bước người dùng thao tác (VD: Vào trang đăng nhập ➔ Nhập tài khoản/mật khẩu ➔ Nhấn gửi ➔ Báo lỗi) và quản lý danh sách kịch bản kiểm thử từng bước.
                   </p>
                   <div className="flex items-center gap-3 mt-4">
                     <button
                       onClick={() =>
                         setFlowModal({
                           open: true,
-                          title: "Luồng Đăng Nhập & Validate Form",
+                          title: "Luồng Đăng Nhập & Kiểm Tra Biểu Mẫu",
                           templateType: "login",
                         })
                       }
                       className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold rounded-2xl shadow-lg transition cursor-pointer"
                     >
                       <Sparkles className="w-4 h-4" />
-                      <span>Tạo Mẫu Flow Đăng Nhập (Có sẵn 4 bước & 8 testcase)</span>
+                      <span>Tạo Mẫu Luồng Đăng Nhập (4 bước & 8 kịch bản mẫu)</span>
                     </button>
                     <button
                       onClick={() =>
@@ -978,9 +978,9 @@ export default function DashboardPage() {
                           templateType: "custom",
                         })
                       }
-                      className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-2xl transition cursor-pointer"
+                      className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold rounded-2xl transition cursor-pointer border border-slate-200 dark:border-slate-700"
                     >
-                      Tạo Flow Trống Tùy Chỉnh
+                      Tạo Luồng Trống Tùy Chỉnh
                     </button>
                   </div>
                 </div>
@@ -1033,14 +1033,14 @@ export default function DashboardPage() {
 
       {/* Modal Tạo / Sửa Dự Án (Project) */}
       {projectModal.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
-          <div className="w-full max-w-md p-6 bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl">
-            <h3 className="text-base font-bold text-white mb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-md">
+          <div className="w-full max-w-md p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl">
+            <h3 className="text-base font-bold text-slate-900 dark:text-white mb-4">
               {projectModal.mode === "create" ? "Tạo Dự Án Mới" : "Chỉnh Sửa Dự Án"}
             </h3>
             <form onSubmit={handleSaveProject} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                   Tên Dự Án (Bắt buộc)
                 </label>
                 <input
@@ -1049,12 +1049,12 @@ export default function DashboardPage() {
                   value={projectName}
                   onChange={(e) => setProjectName(e.target.value)}
                   placeholder="VD: Era Web Client hoặc Gemsocial App"
-                  className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-2xl text-xs text-slate-100 focus:outline-none focus:border-sky-500"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-sky-500"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                   Slug / Mã Định Danh
                 </label>
                 <input
@@ -1062,25 +1062,25 @@ export default function DashboardPage() {
                   value={projectSlug}
                   onChange={(e) => setProjectSlug(e.target.value)}
                   placeholder="VD: client, manage, gemsocial"
-                  className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-2xl text-xs text-slate-100 focus:outline-none focus:border-sky-500 font-mono"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-sky-500 font-mono"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                  GitHub Repository (Tùy chọn)
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Kho GitHub Repository (Tùy chọn)
                 </label>
                 <input
                   type="text"
                   value={projectRepo}
                   onChange={(e) => setProjectRepo(e.target.value)}
                   placeholder="VD: michaelngoc/era-tester"
-                  className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-2xl text-xs text-slate-100 focus:outline-none focus:border-sky-500 font-mono"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-sky-500 font-mono"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                   Mô Tả Dự Án
                 </label>
                 <textarea
@@ -1088,7 +1088,7 @@ export default function DashboardPage() {
                   value={projectDesc}
                   onChange={(e) => setProjectDesc(e.target.value)}
                   placeholder="Mô tả phạm vi hoặc đối tượng kiểm thử của dự án"
-                  className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-2xl text-xs text-slate-100 focus:outline-none focus:border-sky-500"
+                  className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-sky-500"
                 />
               </div>
 
@@ -1096,7 +1096,7 @@ export default function DashboardPage() {
                 <button
                   type="button"
                   onClick={() => setProjectModal({ open: false, mode: "create" })}
-                  className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white rounded-xl"
+                  className="px-4 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white rounded-xl"
                 >
                   Hủy
                 </button>
@@ -1114,14 +1114,14 @@ export default function DashboardPage() {
 
       {/* Modal Tạo / Sửa Nhóm Test (Module) */}
       {moduleModal.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
-          <div className="w-full max-w-md p-6 bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl">
-            <h3 className="text-base font-bold text-white mb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-md">
+          <div className="w-full max-w-md p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl">
+            <h3 className="text-base font-bold text-slate-900 dark:text-white mb-4">
               {moduleModal.mode === "create" ? "Tạo Nhóm Kiểm Thử Mới" : "Chỉnh Sửa Nhóm Kiểm Thử"}
             </h3>
             <form onSubmit={handleSaveModule} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                   Tên Nhóm (Module)
                 </label>
                 <input
@@ -1130,12 +1130,12 @@ export default function DashboardPage() {
                   value={moduleName}
                   onChange={(e) => setModuleName(e.target.value)}
                   placeholder="VD: Authentication / Login Flow hoặc Article Block"
-                  className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-2xl text-xs text-slate-100 focus:outline-none focus:border-sky-500"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-sky-500"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                   Quy Tắc File Git (File Patterns để nhận diện tự động)
                 </label>
                 <input
@@ -1143,10 +1143,10 @@ export default function DashboardPage() {
                   value={modulePatterns}
                   onChange={(e) => setModulePatterns(e.target.value)}
                   placeholder="src/app/login/**, src/components/auth/**"
-                  className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-2xl text-xs text-slate-100 focus:outline-none focus:border-sky-500 font-mono"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-sky-500 font-mono"
                 />
-                <p className="text-[10.5px] text-slate-500 mt-1.5 leading-relaxed">
-                  Khi Dev push vào nhánh <code>tester</code>, các file thay đổi khớp mẫu này sẽ tự động bật cờ cảnh báo Re-test cho Tester!
+                <p className="text-[10.5px] text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">
+                  Khi Dev push vào nhánh <code>tester</code>, các file thay đổi khớp mẫu này sẽ tự động bật cờ cảnh báo Kiểm lại cho Tester!
                 </p>
               </div>
 
@@ -1154,7 +1154,7 @@ export default function DashboardPage() {
                 <button
                   type="button"
                   onClick={() => setModuleModal({ open: false, mode: "create" })}
-                  className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white rounded-xl"
+                  className="px-4 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white rounded-xl"
                 >
                   Hủy
                 </button>
@@ -1172,17 +1172,17 @@ export default function DashboardPage() {
 
       {/* Modal Tạo User Flow Mới */}
       {flowModal.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
-          <div className="w-full max-w-md p-6 bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl">
-            <h3 className="text-base font-bold text-white mb-2">Tạo Sơ Đồ User Flow Mới</h3>
-            <p className="text-xs text-slate-400 mb-4">
-              Nhóm: <strong className="text-slate-200">{selectedModule?.name}</strong>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-md">
+          <div className="w-full max-w-md p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl">
+            <h3 className="text-base font-bold text-slate-900 dark:text-white mb-2">Tạo Sơ Đồ Luồng Mới (User Flow)</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+              Nhóm: <strong className="text-slate-800 dark:text-slate-200">{selectedModule?.name}</strong>
             </p>
 
             <form onSubmit={handleCreateFlow} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                  Tiêu Đề User Flow
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Tiêu Đề Luồng Thao Tác
                 </label>
                 <input
                   type="text"
@@ -1190,30 +1190,30 @@ export default function DashboardPage() {
                   value={flowModal.title}
                   onChange={(e) => setFlowModal({ ...flowModal, title: e.target.value })}
                   placeholder="VD: Luồng Đăng Nhập & Phân Quyền"
-                  className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-2xl text-xs text-slate-100 focus:outline-none focus:border-sky-500"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-sky-500"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                  Chọn Loại Template Sơ Đồ
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Chọn Loại Mẫu Luồng
                 </label>
                 <div className="space-y-2">
                   <label
                     onClick={() => setFlowModal({ ...flowModal, templateType: "login" })}
                     className={`flex items-start gap-3 p-3 rounded-2xl border transition cursor-pointer ${
                       flowModal.templateType === "login"
-                        ? "bg-sky-500/10 border-sky-500 text-white"
-                        : "bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700"
+                        ? "bg-sky-50 dark:bg-sky-500/10 border-sky-500 text-slate-900 dark:text-white"
+                        : "bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700"
                     }`}
                   >
-                    <Sparkles className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
+                    <Sparkles className="w-4 h-4 text-emerald-500 dark:text-emerald-400 mt-0.5 shrink-0" />
                     <div>
-                      <div className="text-xs font-bold text-slate-100">
-                        Template Đăng Nhập (Khuyên Dùng)
+                      <div className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                        Mẫu Luồng Đăng Nhập (Khuyên Dùng)
                       </div>
-                      <div className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">
-                        Tự sinh sẵn 4 bước chuẩn (Mở /login ➔ Nhập email/pass ➔ Nhấn nút login ➔ Xử lý kết quả) kèm 8 checklist kịch bản testcase chi tiết (bỏ trống ô input, mật khẩu ngắn, nút quay loading, báo lỗi sai pass, v.v.).
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
+                        Tự sinh sẵn 4 bước chuẩn (Mở /login ➔ Nhập email/mật khẩu ➔ Nhấn nút đăng nhập ➔ Xử lý kết quả) kèm 8 kịch bản kiểm thử chi tiết (bỏ trống ô input, mật khẩu ngắn, nút quay chờ, báo lỗi sai pass, v.v.).
                       </div>
                     </div>
                   </label>
@@ -1222,17 +1222,17 @@ export default function DashboardPage() {
                     onClick={() => setFlowModal({ ...flowModal, templateType: "custom" })}
                     className={`flex items-start gap-3 p-3 rounded-2xl border transition cursor-pointer ${
                       flowModal.templateType === "custom"
-                        ? "bg-sky-500/10 border-sky-500 text-white"
-                        : "bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700"
+                        ? "bg-sky-50 dark:bg-sky-500/10 border-sky-500 text-slate-900 dark:text-white"
+                        : "bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700"
                     }`}
                   >
-                    <Workflow className="w-4 h-4 text-sky-400 mt-0.5 shrink-0" />
+                    <Workflow className="w-4 h-4 text-sky-500 dark:text-sky-400 mt-0.5 shrink-0" />
                     <div>
-                      <div className="text-xs font-bold text-slate-100">
-                        Tùy Chỉnh (Custom Flow Trống)
+                      <div className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                        Tùy Chỉnh (Luồng Trống)
                       </div>
-                      <div className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">
-                        Khởi tạo sơ đồ cơ bản để bạn tự do tạo thêm các bước thao tác và checklist riêng biệt.
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
+                        Khởi tạo sơ đồ cơ bản để bạn tự do tạo thêm các bước thao tác và kịch bản riêng biệt.
                       </div>
                     </div>
                   </label>
@@ -1243,7 +1243,7 @@ export default function DashboardPage() {
                 <button
                   type="button"
                   onClick={() => setFlowModal({ ...flowModal, open: false })}
-                  className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white rounded-xl"
+                  className="px-4 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white rounded-xl"
                 >
                   Hủy
                 </button>
@@ -1251,7 +1251,7 @@ export default function DashboardPage() {
                   type="submit"
                   className="px-5 py-2 bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white text-xs font-bold rounded-2xl shadow-md cursor-pointer"
                 >
-                  Tạo User Flow
+                  Tạo Luồng Thao Tác
                 </button>
               </div>
             </form>
@@ -1261,13 +1261,13 @@ export default function DashboardPage() {
 
       {/* Modal Thêm Test Case Nhanh */}
       {showAddCaseModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
-          <div className="w-full max-w-lg p-6 bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl">
-            <h3 className="text-base font-bold text-white mb-4">Thêm Bước / Kịch Bản Kiểm Thử</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-md">
+          <div className="w-full max-w-lg p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl">
+            <h3 className="text-base font-bold text-slate-900 dark:text-white mb-4">Thêm Bước / Kịch Bản Kiểm Thử</h3>
             <form onSubmit={handleCreateCaseDirect} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                  Tiêu Đề Kịch Bản / Flow Step
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Tiêu Đề Kịch Bản / Bước Kiểm Thử
                 </label>
                 <input
                   type="text"
@@ -1275,12 +1275,12 @@ export default function DashboardPage() {
                   value={newCaseTitle}
                   onChange={(e) => setNewCaseTitle(e.target.value)}
                   placeholder="VD: Kiểm tra validate bỏ trống ô Email hoặc nút Login"
-                  className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-2xl text-xs text-slate-100 focus:outline-none focus:border-sky-500"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-sky-500"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                   Dữ Liệu Đầu Vào (Input)
                 </label>
                 <input
@@ -1288,13 +1288,13 @@ export default function DashboardPage() {
                   value={newCaseInput}
                   onChange={(e) => setNewCaseInput(e.target.value)}
                   placeholder="email: '', password: '123'"
-                  className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-2xl text-xs text-slate-100 focus:outline-none focus:border-sky-500 font-mono"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-sky-500 font-mono"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                     Kết Quả Mong Đợi (Expected)
                   </label>
                   <textarea
@@ -1302,12 +1302,12 @@ export default function DashboardPage() {
                     value={newCaseExpected}
                     onChange={(e) => setNewCaseExpected(e.target.value)}
                     placeholder="Hiển thị thông báo đỏ yêu cầu nhập email"
-                    className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-2xl text-xs text-slate-100 focus:outline-none focus:border-sky-500"
+                    className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-sky-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                     Kết Quả Thực Tế (Nếu lỗi)
                   </label>
                   <textarea
@@ -1315,7 +1315,7 @@ export default function DashboardPage() {
                     value={newCaseActual}
                     onChange={(e) => setNewCaseActual(e.target.value)}
                     placeholder="Không có thông báo nào xuất hiện"
-                    className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-2xl text-xs text-slate-100 focus:outline-none focus:border-sky-500"
+                    className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-sky-500"
                   />
                 </div>
               </div>
@@ -1324,7 +1324,7 @@ export default function DashboardPage() {
                 <button
                   type="button"
                   onClick={() => setShowAddCaseModal(false)}
-                  className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white rounded-xl"
+                  className="px-4 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white rounded-xl"
                 >
                   Hủy
                 </button>

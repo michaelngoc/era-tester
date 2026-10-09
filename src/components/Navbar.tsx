@@ -12,6 +12,7 @@ import {
   ExternalLink,
   Code2,
 } from "lucide-react";
+import ThemeToggle from "./ThemeToggle";
 
 interface NavbarProps {
   user: {
@@ -43,11 +44,11 @@ export default function Navbar({ user }: NavbarProps) {
   };
 
   return (
-    <header className="sticky top-0 z-50 h-16 bg-slate-900/80 backdrop-blur-xl border-b border-slate-800/80 px-6 flex items-center justify-between transition-colors">
+    <header className="sticky top-0 z-50 h-16 bg-white/85 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800/80 px-6 flex items-center justify-between transition-colors duration-150">
       <div className="flex items-center gap-6">
         <Link href="/" className="flex items-center gap-3 group">
-          <div className="relative p-2.5 bg-gradient-to-br from-sky-500/20 to-indigo-500/10 border border-sky-500/30 rounded-xl text-sky-400 group-hover:border-sky-400/50 group-hover:scale-105 transition-all duration-200 shadow-sm shadow-sky-500/10">
-            <ShieldCheck className="w-5 h-5 text-sky-400" />
+          <div className="relative p-2.5 bg-gradient-to-br from-sky-500/20 to-indigo-500/10 border border-sky-500/30 rounded-xl text-sky-500 dark:text-sky-400 group-hover:border-sky-400/50 group-hover:scale-105 transition-all duration-200 shadow-sm shadow-sky-500/10">
+            <ShieldCheck className="w-5 h-5 text-sky-500 dark:text-sky-400" />
             <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-sky-500"></span>
@@ -55,34 +56,34 @@ export default function Navbar({ user }: NavbarProps) {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-bold text-slate-100 tracking-tight text-base font-sans">
+              <span className="font-bold text-slate-900 dark:text-slate-100 tracking-tight text-base font-sans">
                 Eraweb Tester Hub
               </span>
-              <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-sky-500/15 text-sky-300 border border-sky-500/30">
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-sky-500/15 text-sky-600 dark:text-sky-300 border border-sky-500/30">
                 v1.2
               </span>
             </div>
-            <span className="block text-[10.5px] text-slate-400 uppercase tracking-wider font-medium">
-              QA/QC & Git Impact Suite
+            <span className="block text-[10.5px] text-slate-500 dark:text-slate-400 uppercase tracking-wider font-medium">
+              Bộ Công Cụ QA/QC & Giám Sát Git
             </span>
           </div>
         </Link>
 
-        <nav className="hidden md:flex items-center gap-1.5 pl-6 border-l border-slate-800/80">
+        <nav className="hidden md:flex items-center gap-1.5 pl-6 border-l border-slate-200 dark:border-slate-800/80">
           <Link
             href="/"
-            className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800/60 rounded-xl transition-all duration-150 cursor-pointer"
+            className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 rounded-xl transition-all duration-150 cursor-pointer"
           >
-            <FolderGit2 className="w-4 h-4 text-sky-400" />
+            <FolderGit2 className="w-4 h-4 text-sky-500 dark:text-sky-400" />
             Dự Án Kiểm Thử
           </Link>
 
           {user?.role === "SUPER_ADMIN" && (
             <Link
               href="/admin/users"
-              className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-amber-300 hover:text-amber-200 hover:bg-amber-500/10 rounded-xl transition-all duration-150 cursor-pointer"
+              className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-amber-700 dark:text-amber-300 hover:text-amber-800 dark:hover:text-amber-200 hover:bg-amber-500/10 rounded-xl transition-all duration-150 cursor-pointer"
             >
-              <Users className="w-4 h-4 text-amber-400" />
+              <Users className="w-4 h-4 text-amber-500 dark:text-amber-400" />
               Duyệt Thành Viên
             </Link>
           )}
@@ -91,44 +92,47 @@ export default function Navbar({ user }: NavbarProps) {
             href="https://github.com/michaelngoc/era-tester"
             target="_blank"
             rel="noreferrer"
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 rounded-xl transition-all duration-150 cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/40 rounded-xl transition-all duration-150 cursor-pointer"
           >
             <Code2 className="w-3.5 h-3.5" />
-            GitHub Repo
-            <ExternalLink className="w-3 h-3 text-slate-500" />
+            Kho GitHub
+            <ExternalLink className="w-3 h-3 text-slate-400" />
           </a>
         </nav>
       </div>
 
       <div className="flex items-center gap-3">
+        {/* Nút chuyển đổi Giao diện Sáng / Tối */}
+        <ThemeToggle />
+
         {/* Branch tester badge with live pulsing beacon */}
-        <div className="hidden sm:flex items-center gap-2 px-3 py-1 bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 rounded-xl text-xs font-mono font-medium shadow-sm">
+        <div className="hidden sm:flex items-center gap-2 px-3 py-1 bg-emerald-500/10 border border-emerald-500/25 text-emerald-600 dark:text-emerald-400 rounded-xl text-xs font-mono font-medium shadow-sm">
           <span className="relative flex h-2 w-2">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
             <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
           </span>
-          <GitBranch className="w-3.5 h-3.5 text-emerald-400" />
-          <span>branch: <strong className="text-emerald-300">tester</strong></span>
+          <GitBranch className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400" />
+          <span>nhánh: <strong className="text-emerald-700 dark:text-emerald-300">tester</strong></span>
         </div>
 
         {user ? (
-          <div className="flex items-center gap-3 pl-3 border-l border-slate-800/80">
+          <div className="flex items-center gap-3 pl-3 border-l border-slate-200 dark:border-slate-800/80">
             <div className="text-right hidden sm:block">
-              <div className="text-xs font-semibold text-slate-200 leading-tight">
+              <div className="text-xs font-semibold text-slate-800 dark:text-slate-200 leading-tight">
                 {user.fullName || user.email}
               </div>
               <div className="text-[10px] font-medium tracking-wide">
                 {user.role === "SUPER_ADMIN" ? (
-                  <span className="text-amber-400 font-bold tracking-wider uppercase text-[9.5px]">
-                    Super Admin
+                  <span className="text-amber-600 dark:text-amber-400 font-bold tracking-wider uppercase text-[9.5px]">
+                    Quản Trị Tối Cao
                   </span>
                 ) : user.role === "DEVELOPER" ? (
-                  <span className="text-indigo-400 font-bold tracking-wider uppercase text-[9.5px]">
-                    Developer
+                  <span className="text-indigo-600 dark:text-indigo-400 font-bold tracking-wider uppercase text-[9.5px]">
+                    Lập Trình Viên (Dev)
                   </span>
                 ) : (
-                  <span className="text-sky-400 font-bold tracking-wider uppercase text-[9.5px]">
-                    Tester / QA
+                  <span className="text-sky-600 dark:text-sky-400 font-bold tracking-wider uppercase text-[9.5px]">
+                    Kiểm Thử Viên (QA)
                   </span>
                 )}
               </div>
@@ -142,7 +146,7 @@ export default function Navbar({ user }: NavbarProps) {
             <button
               onClick={handleLogout}
               title="Đăng xuất khỏi hệ thống"
-              className="p-2 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition-all duration-150 cursor-pointer"
+              className="p-2 text-slate-500 dark:text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition-all duration-150 cursor-pointer"
             >
               <LogOut className="w-4 h-4" />
             </button>
