@@ -1,20 +1,17 @@
-"use client";
-
 import React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   ShieldCheck,
   FolderGit2,
   Users,
-  LogOut,
   GitBranch,
   ExternalLink,
   Code2,
 } from "lucide-react";
 import ThemeToggle from "./ThemeToggle";
+import LogoutButton from "./LogoutButton";
 
-interface NavbarProps {
+export interface NavbarProps {
   user: {
     id: number;
     email: string;
@@ -24,14 +21,6 @@ interface NavbarProps {
 }
 
 export default function Navbar({ user }: NavbarProps) {
-  const router = useRouter();
-
-  const handleLogout = async () => {
-    await fetch("/api/auth/logout", { method: "POST" });
-    router.push("/login");
-    router.refresh();
-  };
-
   const getInitials = (name?: string, email?: string) => {
     if (name) {
       const parts = name.trim().split(" ");
@@ -102,7 +91,7 @@ export default function Navbar({ user }: NavbarProps) {
       </div>
 
       <div className="flex items-center gap-3">
-        {/* Nút chuyển đổi Giao diện Sáng / Tối */}
+        {/* Nút chuyển đổi Giao diện Sáng / Tối (Client Island) */}
         <ThemeToggle />
 
         {/* Branch tester badge with live pulsing beacon */}
@@ -112,7 +101,9 @@ export default function Navbar({ user }: NavbarProps) {
             <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
           </span>
           <GitBranch className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400" />
-          <span>nhánh: <strong className="text-emerald-700 dark:text-emerald-300">tester</strong></span>
+          <span>
+            nhánh: <strong className="text-emerald-700 dark:text-emerald-300">tester</strong>
+          </span>
         </div>
 
         {user ? (
@@ -143,13 +134,8 @@ export default function Navbar({ user }: NavbarProps) {
               {getInitials(user.fullName, user.email)}
             </div>
 
-            <button
-              onClick={handleLogout}
-              title="Đăng xuất khỏi hệ thống"
-              className="p-2 text-slate-500 dark:text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition-all duration-150 cursor-pointer"
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
+            {/* Logout Client Island */}
+            <LogoutButton />
           </div>
         ) : (
           <Link
