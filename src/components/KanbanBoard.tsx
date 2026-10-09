@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import CopyCommitSnippet from "./CopyCommitSnippet";
 import { TestCase } from "./CaseDetailModal";
 import {
   AlertCircle,
@@ -315,9 +316,7 @@ export default function KanbanBoard({
                     <div className="flex items-center justify-between gap-1 mb-2.5">
                       <div className="flex items-center gap-1.5">
                         <GripVertical className="w-3 h-3 text-slate-300 dark:text-slate-600 group-hover:text-slate-500 dark:group-hover:text-slate-400 shrink-0" />
-                        <span className="text-[10px] font-mono font-bold text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
-                          #{item.id}
-                        </span>
+                        <CopyCommitSnippet compact caseId={item.id} caseTitle={item.title} />
                       </div>
 
                       <div className="flex items-center gap-1.5">

@@ -14,9 +14,9 @@ export interface GitCommitPayload {
 }
 
 export async function processGitPushImpact(payload: GitCommitPayload) {
-  const { commitHash, commitMessage, authorName, branch, modifiedFiles, repoFullName } = payload;
+  const { commitHash, commitMessage, authorName, authorEmail, branch, modifiedFiles, repoFullName } = payload;
 
-  // 1. Xác định Project tương ứng từ repository full_name (nếu có)
+  // 1. Xác định Project tương ứng từ repository full_name
   let targetProjectId: number | null = null;
   if (repoFullName) {
     const cleanRepo = repoFullName.trim().replace(/\.git$/, "");
@@ -32,7 +32,104 @@ export async function processGitPushImpact(payload: GitCommitPayload) {
     }
   }
 
-  // 2. Fetch các modules (lọc theo project nếu xác định được, hoặc toàn bộ)
+  // 2. Tìm hoặc tạo Đợt Test Hàng Ngày (Daily Incremental Test Run) nếu có targetProjectId
+  let activeRunId: number | null = null;
+  if (targetProjectId) {
+    const todayStr = new Date().toLocaleDateString("vi-VN");
+    const existingRunRes = await query<{ id: number }>(
+      `SELECT id FROM era_tester_runs 
+       WHERE project_id = $1 
+         AND run_type = 'DAILY_INCREMENTAL' 
+         AND status = 'IN_PROGRESS' 
+         AND created_at::date = CURRENT_DATE
+       ORDER BY id DESC LIMIT 1`,
+      [targetProjectId]
+    );
+
+    if (existingRunRes.rows.length > 0) {
+      activeRunId = existingRunRes.rows[0].id;
+      // Cập nhật commit hash mới nhất
+      await query(
+        `UPDATE era_tester_runs 
+         SET git_commit_hash = $1, git_commit_message = $2, git_author = $3
+         WHERE id = $4`,
+        [commitHash, commitMessage, authorName, activeRunId]
+      );
+    } else {
+      const newRunRes = await query<{ id: number }>(
+        `INSERT INTO era_tester_runs 
+         (project_id, title, run_type, git_commit_hash, git_commit_message, git_author, status)
+         VALUES ($1, $2, 'DAILY_INCREMENTAL', $3, $4, $5, 'IN_PROGRESS')
+         RETURNING id`,
+        [
+          targetProjectId,
+          `Đợt Test Nhanh Hôm Nay (${todayStr})`,
+          commitHash,
+          commitMessage,
+          authorName,
+        ]
+      );
+      activeRunId = newRunRes.rows[0]?.id || null;
+    }
+  }
+
+  // 3. Quét commitMessage xem có mã [#ID] hoặc [case-ID] hay không
+  // Ví dụ: "fix: xử lý lỗi validate [#42]" hoặc "fix bug [case-15]"
+  const caseIdMatches = Array.from(
+    commitMessage.matchAll(/\[#(?:case-)?(\d+)\]|#(\d+)/gi)
+  );
+  const referencedCaseIds: number[] = [];
+  for (const m of caseIdMatches) {
+    const idStr = m[1] || m[2];
+    if (idStr) {
+      const idNum = parseInt(idStr, 10);
+      if (!isNaN(idNum) && !referencedCaseIds.includes(idNum)) {
+        referencedCaseIds.push(idNum);
+      }
+    }
+  }
+
+  // Nếu commit có chứa mã case cụ thể -> TỰ ĐỘNG CHUYỂN SANG VERIFY VÀ GHI AUDIT LOG!
+  if (referencedCaseIds.length > 0) {
+    for (const caseId of referencedCaseIds) {
+      const caseRes = await query<{ id: number; status: string; module_id: number }>(
+        `SELECT id, status, module_id FROM era_tester_cases WHERE id = $1 LIMIT 1`,
+        [caseId]
+      );
+      if (caseRes.rows.length > 0) {
+        const curCase = caseRes.rows[0];
+        const oldStatus = curCase.status;
+
+        // Cập nhật trạng thái case sang VERIFY
+        await query(
+          `UPDATE era_tester_cases 
+           SET status = 'VERIFY', 
+               is_impacted_by_git = TRUE,
+               last_run_id = COALESCE($1, last_run_id),
+               updated_at = NOW() 
+           WHERE id = $2`,
+          [activeRunId, caseId]
+        );
+
+        // Ghi nhận lịch sử kiểm thử (Audit Log)
+        await query(
+          `INSERT INTO era_tester_case_history 
+           (case_id, run_id, actor_name, action, from_status, to_status, note, git_commit_hash)
+           VALUES ($1, $2, $3, 'AUTO_GIT_VERIFY', $4, 'VERIFY', $5, $6)`,
+          [
+            caseId,
+            activeRunId,
+            authorName,
+            oldStatus,
+            `Dev đã đẩy commit sửa lỗi: ${commitMessage}`,
+            commitHash,
+          ]
+        );
+      }
+    }
+  }
+
+  // 4. Fetch các modules để đối chiếu file patterns
   let modulesSql = `SELECT id, project_id, name, file_patterns, assigned_testers FROM era_tester_modules`;
   const modulesParams: any[] = [];
   if (targetProjectId) {
@@ -72,19 +169,21 @@ export async function processGitPushImpact(payload: GitCommitPayload) {
     }
   }
 
-  // 3. Đánh dấu test cases trong các module bị ảnh hưởng và tự động gán tester phụ trách
+  // 5. Đánh dấu cờ Git Impact cho các case thuộc module bị ảnh hưởng (KHÔNG đổi case sang NEW!)
   if (impactedModules.length > 0) {
     const moduleIds = impactedModules.map((m) => m.id);
 
-    // Bật cờ is_impacted_by_git cho toàn bộ testcases thuộc các module này
+    // Bật cờ is_impacted_by_git
     await query(
       `UPDATE era_tester_cases 
-       SET is_impacted_by_git = TRUE, updated_at = NOW() 
-       WHERE module_id = ANY($1::int[])`,
-      [moduleIds]
+       SET is_impacted_by_git = TRUE, 
+           last_run_id = COALESCE($1, last_run_id),
+           updated_at = NOW() 
+       WHERE module_id = ANY($2::int[])`,
+      [activeRunId, moduleIds]
     );
 
-    // Với mỗi module có cấu hình assigned_testers: nếu test case chưa được ai nhận, tự động gán cho Tester đầu tiên
+    // Tự động gán Tester nếu case chưa có ai nhận
     for (const mod of impactedModules) {
       if (mod.assignedTesters && mod.assignedTesters.length > 0) {
         const primaryTesterId = mod.assignedTesters[0];
@@ -97,7 +196,7 @@ export async function processGitPushImpact(payload: GitCommitPayload) {
       }
     }
 
-    // 4. Lưu git log vào database
+    // 6. Lưu git log
     await query(
       `INSERT INTO era_tester_git_logs 
        (project_id, branch, commit_hash, commit_message, author_name, author_email, modified_files, impacted_modules)
@@ -108,14 +207,13 @@ export async function processGitPushImpact(payload: GitCommitPayload) {
         commitHash,
         commitMessage,
         authorName,
-        payload.authorEmail,
+        authorEmail,
         modifiedFiles,
         JSON.stringify(impactedModules),
       ]
     );
 
-    // 5. Tập hợp danh sách Tester nhận email thông báo
-    // Ưu tiên: Các tester được cấu hình phụ trách các module bị ảnh hưởng
+    // 7. Gửi email thông báo
     const specificTesterIds = new Set<number>();
     impactedModules.forEach((m) => {
       (m.assignedTesters || []).forEach((tid) => specificTesterIds.add(tid));
@@ -131,7 +229,6 @@ export async function processGitPushImpact(payload: GitCommitPayload) {
       recipients = specificUsersRes.rows.map((u) => u.email).filter(Boolean);
     }
 
-    // Nếu các module chưa được gán tester riêng, gửi cho tất cả tester & admin đang hoạt động
     if (recipients.length === 0) {
       const allUsersRes = await query<{ email: string }>(
         "SELECT email FROM era_tester_users WHERE status = 'ACTIVE' AND role IN ('TESTER', 'SUPER_ADMIN')"
@@ -154,5 +251,7 @@ export async function processGitPushImpact(payload: GitCommitPayload) {
   return {
     impactedCount: impactedModules.length,
     impactedModules,
+    referencedCases: referencedCaseIds,
+    activeRunId,
   };
 }

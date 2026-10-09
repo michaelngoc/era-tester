@@ -14,8 +14,11 @@ import {
   FileText,
   Terminal,
   FileCheck,
+  Clock,
 } from "lucide-react";
 import JsonViewer from "./JsonViewer";
+import CopyCommitSnippet from "./CopyCommitSnippet";
+import CaseHistoryTimeline from "./CaseHistoryTimeline";
 
 export interface TestCase {
   id: number;
@@ -51,7 +54,7 @@ export default function CaseDetailModal({
   onDelete,
 }: CaseDetailModalProps) {
   const [formData, setFormData] = useState<TestCase | null>(null);
-  const [activeTab, setActiveTab] = useState<"scenario" | "io" | "json" | "evidence">("scenario");
+  const [activeTab, setActiveTab] = useState<"scenario" | "io" | "json" | "evidence" | "history">("scenario");
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [users, setUsers] = useState<{ testers: any[]; developers: any[] }>({
@@ -124,28 +127,23 @@ export default function CaseDetailModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: formData.title,
-          status: formData.status,
-          priority: formData.priority,
           inputData: formData.input_data,
           outputData: formData.output_data,
           expectedResult: formData.expected_result,
           actualResult: formData.actual_result,
           responsePayload: formData.response_payload,
-          evidenceUrls: formData.evidence_urls,
+          status: formData.status,
+          priority: formData.priority,
           assignedTo: formData.assigned_to,
         }),
       });
-
       const data = await res.json();
       if (data.success && data.case) {
         onUpdate(data.case);
         onClose();
-      } else {
-        alert("Lưu thất bại: " + (data.error || "Lỗi không xác định"));
       }
     } catch (err) {
       console.error("Save error:", err);
-      alert("Lỗi khi lưu dữ liệu test case");
     } finally {
       setSaving(false);
     }
@@ -220,8 +218,13 @@ export default function CaseDetailModal({
             </button>
           </div>
 
+          {/* Snippet 1-Click Copy Commit cho Developer */}
+          <div className="mt-3">
+            <CopyCommitSnippet caseId={formData.id} caseTitle={formData.title} />
+          </div>
+
           {/* Quick Status, Priority, Assignee & Claim Action selectors */}
-          <div className="flex flex-wrap items-center gap-3 mt-4 pt-3 border-t border-slate-200 dark:border-slate-800/80">
+          <div className="flex flex-wrap items-center gap-3 mt-3 pt-3 border-t border-slate-200 dark:border-slate-800/80">
             <div className="flex items-center gap-2 text-xs">
               <span className="text-slate-600 dark:text-slate-400 font-semibold">Trạng thái:</span>
               <select
@@ -261,33 +264,33 @@ export default function CaseDetailModal({
                     assigned_to: e.target.value ? Number(e.target.value) : null,
                   })
                 }
-                className="bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-900 dark:text-slate-200 focus:outline-none focus:border-sky-500 cursor-pointer max-w-[210px] truncate"
+                className="bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-900 dark:text-slate-200 focus:outline-none focus:border-sky-500 cursor-pointer"
               >
-                <option value="">Chưa gán (Chờ nhận task)</option>
-                <optgroup label="Lập trình viên (Sửa lỗi)">
-                  {users.developers.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {d.full_name || d.email} (Dev)
+                <option value="">Chưa phân công</option>
+                <optgroup label="Kiểm Thử Viên (Tester)">
+                  {users.testers.map((t) => (
+                    <option key={`t-${t.id}`} value={t.id}>
+                      QA: {t.full_name || t.email}
                     </option>
                   ))}
                 </optgroup>
-                <optgroup label="Kiểm thử viên (Tester)">
-                  {users.testers.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.full_name || t.email} (Tester)
+                <optgroup label="Lập Trình Viên (Dev)">
+                  {users.developers.map((d) => (
+                    <option key={`d-${d.id}`} value={d.id}>
+                      Dev: {d.full_name || d.email}
                     </option>
                   ))}
                 </optgroup>
               </select>
             </div>
 
-            {/* Quick Claim Buttons */}
+            {/* Action Buttons */}
             {formData.status === "NEW" && (
               <button
                 type="button"
                 onClick={handleClaimBug}
                 disabled={saving}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-md shadow-indigo-600/25 transition cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 shadow-md shadow-sky-600/20 transition cursor-pointer"
                 title="Tự động gán cho bạn và chuyển trạng thái sang Đang Khắc Phục (FIX)"
               >
                 <Wrench className="w-3.5 h-3.5" />
@@ -310,10 +313,10 @@ export default function CaseDetailModal({
           </div>
 
           {/* Navigation Tabs */}
-          <div className="flex items-center gap-2 mt-4 pt-2 border-t border-slate-200 dark:border-slate-800/60 text-xs">
+          <div className="flex items-center gap-2 mt-4 pt-2 border-t border-slate-200 dark:border-slate-800/60 text-xs overflow-x-auto">
             <button
               onClick={() => setActiveTab("scenario")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold transition cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold transition cursor-pointer shrink-0 ${
                 activeTab === "scenario"
                   ? "bg-sky-600 text-white shadow-sm"
                   : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800/60"
@@ -325,7 +328,7 @@ export default function CaseDetailModal({
 
             <button
               onClick={() => setActiveTab("io")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold transition cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold transition cursor-pointer shrink-0 ${
                 activeTab === "io"
                   ? "bg-sky-600 text-white shadow-sm"
                   : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800/60"
@@ -337,19 +340,19 @@ export default function CaseDetailModal({
 
             <button
               onClick={() => setActiveTab("json")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold transition cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold transition cursor-pointer shrink-0 ${
                 activeTab === "json"
                   ? "bg-sky-600 text-white shadow-sm"
                   : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800/60"
               }`}
             >
               <FileCheck className="w-3.5 h-3.5" />
-              Dữ Liệu JSON Phản Hồi
+              Dữ Liệu JSON
             </button>
 
             <button
               onClick={() => setActiveTab("evidence")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold transition cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold transition cursor-pointer shrink-0 ${
                 activeTab === "evidence"
                   ? "bg-sky-600 text-white shadow-sm"
                   : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800/60"
@@ -358,11 +361,23 @@ export default function CaseDetailModal({
               <ImageIcon className="w-3.5 h-3.5" />
               Bằng Chứng S3 ({formData.evidence_urls?.length || 0})
             </button>
+
+            <button
+              onClick={() => setActiveTab("history")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold transition cursor-pointer shrink-0 ${
+                activeTab === "history"
+                  ? "bg-sky-600 text-white shadow-sm"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800/60"
+              }`}
+            >
+              <Clock className="w-3.5 h-3.5" />
+              Lịch Sử & Audit Log
+            </button>
           </div>
         </div>
 
-        {/* Modal Scrollable Body */}
-        <div className="flex-1 p-6 overflow-y-auto space-y-4">
+        {/* Modal Main Body */}
+        <div className="flex-1 p-6 overflow-y-auto space-y-6">
           {activeTab === "scenario" && (
             <div className="space-y-4">
               <div>
@@ -372,32 +387,36 @@ export default function CaseDetailModal({
                 <textarea
                   rows={3}
                   value={formData.expected_result || ""}
-                  onChange={(e) => setFormData({ ...formData, expected_result: e.target.value })}
-                  placeholder="Mô tả kết quả chuẩn hệ thống phải đạt được..."
-                  className="w-full p-3 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-2xl text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:border-sky-500 transition"
+                  onChange={(e) =>
+                    setFormData({ ...formData, expected_result: e.target.value })
+                  }
+                  placeholder="Mô tả hành vi mong muốn đạt được..."
+                  className="w-full p-3 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-2xl text-xs text-slate-900 dark:text-slate-200 focus:outline-none focus:border-sky-500 transition"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                  Kết Quả Thực Tế (Actual Result / Chi Tiết Lỗi)
+                <label className="block text-xs font-semibold text-rose-600 dark:text-rose-400 mb-1.5">
+                  Kết Quả Thực Tế (Actual Result / Mô tả lỗi phát sinh)
                 </label>
                 <textarea
                   rows={3}
                   value={formData.actual_result || ""}
-                  onChange={(e) => setFormData({ ...formData, actual_result: e.target.value })}
-                  placeholder="Ghi nhận lỗi thực tế nếu test case thất bại..."
-                  className="w-full p-3 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-2xl text-xs text-rose-700 dark:text-rose-300 placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:border-rose-500 transition"
+                  onChange={(e) =>
+                    setFormData({ ...formData, actual_result: e.target.value })
+                  }
+                  placeholder="Ghi nhận hiện tượng lỗi thực tế..."
+                  className="w-full p-3 bg-slate-50 dark:bg-slate-950 border border-rose-300 dark:border-rose-900/50 rounded-2xl text-xs text-slate-900 dark:text-slate-200 focus:outline-none focus:border-rose-500 transition"
                 />
               </div>
             </div>
           )}
 
           {activeTab === "io" && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                  Dữ Liệu Đầu Vào (Input Data)
+                  Dữ Liệu Đầu Vào (Input Data / Parameters)
                 </label>
                 <textarea
                   rows={6}
@@ -490,6 +509,12 @@ export default function CaseDetailModal({
                   </div>
                 )}
               </div>
+            </div>
+          )}
+
+          {activeTab === "history" && (
+            <div className="pt-2">
+              <CaseHistoryTimeline caseId={formData.id} />
             </div>
           )}
         </div>

@@ -7,6 +7,7 @@ import {
   GitBranch,
   ExternalLink,
   Code2,
+  Archive,
 } from "lucide-react";
 import ThemeToggle from "./ThemeToggle";
 import LogoutButton from "./LogoutButton";
@@ -49,7 +50,7 @@ export default function Navbar({ user }: NavbarProps) {
                 Eraweb Tester Hub
               </span>
               <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-sky-500/15 text-sky-600 dark:text-sky-300 border border-sky-500/30">
-                v1.2
+                v1.3
               </span>
             </div>
             <span className="block text-[10.5px] text-slate-500 dark:text-slate-400 uppercase tracking-wider font-medium">
@@ -65,6 +66,14 @@ export default function Navbar({ user }: NavbarProps) {
           >
             <FolderGit2 className="w-4 h-4 text-sky-500 dark:text-sky-400" />
             Dự Án Kiểm Thử
+          </Link>
+
+          <Link
+            href="/runs"
+            className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 rounded-xl transition-all duration-150 cursor-pointer"
+          >
+            <Archive className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
+            Nhật Ký Chạy Test
           </Link>
 
           {user?.role === "SUPER_ADMIN" && (

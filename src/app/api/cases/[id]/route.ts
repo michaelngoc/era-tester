@@ -38,14 +38,15 @@ export async function PATCH(
   // Xử lý các action nhận task đặc biệt
   let assignedTo = body.assignedTo ?? body.assigned_to;
   let newStatus = body.status || prev.status;
+  let actionName = "STATUS_CHANGE";
 
   if (body.action === "claim_bug") {
-    // Developer bấm nút nhận task sửa bug -> tự động assign cho Dev và chuyển status sang FIX
     assignedTo = user.id;
     newStatus = "FIX";
+    actionName = "CLAIM_BUG";
   } else if (body.action === "claim_test") {
-    // Tester bấm nút nhận kiểm thử -> tự động assign cho Tester
     assignedTo = user.id;
+    actionName = "CLAIM_TEST";
   }
 
   const isResetGitFlag = newStatus === "VERIFY" || newStatus === "CLOSED";
@@ -82,7 +83,32 @@ export async function PATCH(
 
   const updatedCase = updateRes.rows[0];
 
-  // 1. Khi Developer bấm nhận bug (claim_bug): gửi email cho Tester
+  // Ghi nhận Audit Log vào bảng era_tester_case_history nếu có đổi status hoặc action đặc biệt
+  if (prev.status !== newStatus || body.action || body.note) {
+    try {
+      await query(
+        `INSERT INTO era_tester_case_history 
+         (case_id, run_id, actor_id, actor_name, action, from_status, to_status, note, evidence_urls, response_payload)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+        [
+          id,
+          updatedCase.last_run_id || null,
+          user.id,
+          user.fullName || user.email,
+          actionName,
+          prev.status,
+          newStatus,
+          body.note || (body.action === "claim_bug" ? "Dev đã nhận xử lý bug" : null),
+          body.evidenceUrls || body.evidence_urls || null,
+          body.responsePayload ? JSON.stringify(body.responsePayload) : null,
+        ]
+      );
+    } catch (e) {
+      console.error("[Audit History Log Error]", e);
+    }
+  }
+
+  // Gửi email thông báo
   if (body.action === "claim_bug" && prev.creator_email) {
     try {
       await sendBugClaimedEmail({
@@ -97,11 +123,9 @@ export async function PATCH(
     }
   }
 
-  // 2. Gửi email thông báo tự động theo thay đổi trạng thái
   if (prev.status !== newStatus) {
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3005";
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3008";
 
-    // Chuyển sang NEW (Bug)
     if (newStatus === "NEW") {
       if (updatedCase.assigned_to) {
         const devRes = await query("SELECT email FROM era_tester_users WHERE id = $1", [
@@ -118,7 +142,6 @@ export async function PATCH(
           });
         }
       } else {
-        // Tự động broadcast email cho toàn bộ Developer trong hệ thống để vào nhận task
         const devsRes = await query<{ email: string }>(
           "SELECT email FROM era_tester_users WHERE status = 'ACTIVE' AND role IN ('DEVELOPER', 'SUPER_ADMIN')"
         );
@@ -137,7 +160,6 @@ export async function PATCH(
       }
     }
 
-    // Chuyển sang FIX (Dev đã sửa xong) -> Báo cho Tester người tạo để Verify
     if (newStatus === "FIX" && prev.creator_email) {
       await sendEmail({
         to: prev.creator_email,

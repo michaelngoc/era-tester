@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import CopyCommitSnippet from "./CopyCommitSnippet";
 import { TestCase } from "./CaseDetailModal";
 import {
   X,
@@ -501,9 +502,7 @@ export default function StepChecklistDrawer({
                 {/* Header card: ID, Status, Actions */}
                 <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-slate-100 dark:border-slate-800/80">
                   <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-mono font-bold text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-                      #{item.id}
-                    </span>
+                    <CopyCommitSnippet compact caseId={item.id} caseTitle={item.title} />
 
                     {/* Status Badge */}
                     <span
