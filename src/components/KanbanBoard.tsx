@@ -18,6 +18,7 @@ interface KanbanBoardProps {
   onSelectCase: (testCase: TestCase) => void;
   onStatusChange: (id: number, nextStatus: "NEW" | "FIX" | "VERIFY" | "CLOSED") => void;
   onAddNewCase: (status: "NEW" | "FIX" | "VERIFY" | "CLOSED") => void;
+  onClaimTask?: (id: number, action: "claim_bug" | "claim_test") => void;
 }
 
 const COLUMNS = [
@@ -76,6 +77,7 @@ export default function KanbanBoard({
   onSelectCase,
   onStatusChange,
   onAddNewCase,
+  onClaimTask,
 }: KanbanBoardProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 h-full">
@@ -160,28 +162,62 @@ export default function KanbanBoard({
                     </div>
                   )}
 
-                  {/* Card Footer: Assignee & Quick Forward */}
-                  <div className="flex items-center justify-between pt-2.5 border-t border-slate-800/80 text-[11px] text-slate-400">
-                    <div className="flex items-center gap-1.5 truncate max-w-[120px]">
+                  {/* Card Footer: Assignee, Claim & Quick Forward */}
+                  <div className="flex items-center justify-between pt-2.5 border-t border-slate-800/80 text-[11px] text-slate-400 gap-2">
+                    <div className="flex items-center gap-1.5 truncate">
                       <User className="w-3 h-3 text-slate-500 shrink-0" />
-                      <span className="truncate">
-                        {item.assigned_name || "Chưa giao"}
+                      <span className="truncate max-w-[90px]">
+                        {item.assigned_name || (item.status === "NEW" ? "Chưa có Dev" : "Chưa giao")}
                       </span>
                     </div>
 
-                    {col.nextStatus && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onStatusChange(item.id, col.nextStatus as any);
-                        }}
-                        className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10.5px] font-semibold bg-slate-800 hover:bg-sky-600 text-slate-300 hover:text-white transition-all cursor-pointer"
-                        title={`Chuyển sang ${col.nextLabel}`}
-                      >
-                        <span>{col.nextLabel}</span>
-                        <ArrowRight className="w-3 h-3" />
-                      </button>
-                    )}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {/* Nút Nhận Task Sửa Bug */}
+                      {item.status === "NEW" && onClaimTask && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onClaimTask(item.id, "claim_bug");
+                          }}
+                          className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-indigo-600/80 hover:bg-indigo-500 text-white shadow-sm transition cursor-pointer"
+                          title="Nhận sửa bug này (tự động chuyển sang FIX)"
+                        >
+                          <Wrench className="w-2.5 h-2.5" />
+                          <span>Nhận Task</span>
+                        </button>
+                      )}
+
+                      {/* Nút Nhận Kiểm Thử Lại khi có Git Push */}
+                      {item.is_impacted_by_git && onClaimTask && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onClaimTask(item.id, "claim_test");
+                          }}
+                          className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 shadow-sm transition cursor-pointer"
+                          title="Nhận kiểm thử lại kịch bản này"
+                        >
+                          <CheckCircle2 className="w-2.5 h-2.5" />
+                          <span>Nhận Test</span>
+                        </button>
+                      )}
+
+                      {col.nextStatus && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onStatusChange(item.id, col.nextStatus as any);
+                          }}
+                          className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10.5px] font-semibold bg-slate-800 hover:bg-sky-600 text-slate-300 hover:text-white transition-all cursor-pointer"
+                          title={`Chuyển sang ${col.nextLabel}`}
+                        >
+                          <span>{col.nextLabel}</span>
+                          <ArrowRight className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}

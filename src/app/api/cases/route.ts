@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { query } from "@/lib/db";
-import { sendBugReportEmail } from "@/lib/mailer";
+import { sendBugReportEmail, sendBroadcastBugToDevsEmail } from "@/lib/mailer";
 
 export async function GET(req: NextRequest) {
   const user = await getCurrentUser();
@@ -96,19 +96,40 @@ export async function POST(req: NextRequest) {
 
   const newCase = res.rows[0];
 
-  // Nếu tạo test case trực tiếp ở trạng thái Bug (NEW) và có người phụ trách (Dev)
-  if (status === "NEW" && assignedTo) {
-    const devRes = await query("SELECT email FROM era_tester_users WHERE id = $1", [assignedTo]);
+  // Nếu tạo test case ở trạng thái Bug (NEW)
+  if (status === "NEW") {
     const modRes = await query("SELECT name FROM era_tester_modules WHERE id = $1", [modId]);
-    if (devRes.rows.length > 0) {
-      await sendBugReportEmail({
-        devEmail: devRes.rows[0].email,
-        bugTitle: newCase.title,
-        moduleName: modRes.rows[0]?.name || "Module",
-        inputData: newCase.input_data,
-        actualResult: newCase.actual_result,
-        caseId: newCase.id,
-      });
+    const moduleName = modRes.rows[0]?.name || "Module";
+
+    if (assignedTo) {
+      const devRes = await query("SELECT email FROM era_tester_users WHERE id = $1", [assignedTo]);
+      if (devRes.rows.length > 0) {
+        await sendBugReportEmail({
+          devEmail: devRes.rows[0].email,
+          bugTitle: newCase.title,
+          moduleName,
+          inputData: newCase.input_data,
+          actualResult: newCase.actual_result,
+          caseId: newCase.id,
+        });
+      }
+    } else {
+      // Tự động broadcast email cho toàn bộ Developer trong hệ thống để vào nhận task
+      const devsRes = await query<{ email: string }>(
+        "SELECT email FROM era_tester_users WHERE status = 'ACTIVE' AND role IN ('DEVELOPER', 'SUPER_ADMIN')"
+      );
+      const devEmails = devsRes.rows.map((d) => d.email).filter(Boolean);
+      if (devEmails.length > 0) {
+        await sendBroadcastBugToDevsEmail({
+          devEmails,
+          bugTitle: newCase.title,
+          moduleName,
+          inputData: newCase.input_data,
+          actualResult: newCase.actual_result,
+          caseId: newCase.id,
+          testerName: user.fullName || user.email,
+        });
+      }
     }
   }
 

@@ -196,3 +196,99 @@ export async function sendAccountApprovedEmail(userEmail: string, userName: stri
     html,
   });
 }
+
+/**
+ * Gửi email thông báo cho TẤT CẢ các Developers khi Tester phát hiện / báo Bug mới
+ */
+export async function sendBroadcastBugToDevsEmail({
+  devEmails,
+  bugTitle,
+  moduleName,
+  inputData,
+  actualResult,
+  caseId,
+  testerName,
+}: {
+  devEmails: string[];
+  bugTitle: string;
+  moduleName: string;
+  inputData?: string;
+  actualResult?: string;
+  caseId: number;
+  testerName?: string;
+}) {
+  if (devEmails.length === 0) return;
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3005";
+  const html = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #fee2e2; border-radius: 12px; background: #ffffff;">
+      <h2 style="color: #dc2626; margin-top: 0;">🐞 Bug Mới Cần Xử Lý (Open for Devs)</h2>
+      <p style="color: #334155; font-size: 15px;">
+        Tester <strong>${testerName || "QA Team"}</strong> vừa báo cáo một lỗi tại module: <strong>${moduleName}</strong>.
+      </p>
+      <div style="background: #fef2f2; border: 1px solid #fecaca; padding: 16px; border-radius: 8px; margin: 16px 0;">
+        <h3 style="margin: 0 0 8px 0; color: #991b1b; font-size: 16px;">#${caseId}: ${bugTitle}</h3>
+        ${inputData ? `<p style="margin: 4px 0; font-size: 14px;"><strong>Đầu vào (Input):</strong> <code>${inputData}</code></p>` : ""}
+        ${actualResult ? `<p style="margin: 4px 0; font-size: 14px; color: #b91c1c;"><strong>Lỗi thực tế:</strong> ${actualResult}</p>` : ""}
+      </div>
+      <p style="color: #64748b; font-size: 13px;">
+        Bất kỳ Developer nào sẵn sàng có thể bấm nút bên dưới để nhận task sửa lỗi này.
+      </p>
+      <div style="text-align: center; margin-top: 24px;">
+        <a href="${appUrl}" style="display: inline-block; background: #dc2626; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 600;">
+          Nhận Sửa Bug Này (Claim Task)
+        </a>
+      </div>
+    </div>
+  `;
+
+  return sendEmail({
+    to: devEmails,
+    subject: `[Bug Alert] 🐞 Lỗi mới: ${bugTitle} (${moduleName}) - Cần Dev nhận task`,
+    html,
+  });
+}
+
+/**
+ * Gửi email cho Tester khi Developer đã bấm nhận task sửa bug
+ */
+export async function sendBugClaimedEmail({
+  testerEmail,
+  devName,
+  bugTitle,
+  moduleName,
+  caseId,
+}: {
+  testerEmail: string;
+  devName: string;
+  bugTitle: string;
+  moduleName: string;
+  caseId: number;
+}) {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3005";
+  const html = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 500px; margin: 0 auto; padding: 24px; border: 1px solid #e0e7ff; border-radius: 12px; background: #ffffff;">
+      <h2 style="color: #4f46e5; margin-top: 0;">🛠️ Developer Đã Nhận Sửa Bug</h2>
+      <p style="color: #334155;">
+        Developer <strong>${devName}</strong> đã nhận task sửa lỗi cho bug:
+      </p>
+      <div style="background: #f5f3ff; border: 1px solid #ddd6fe; padding: 12px 16px; border-radius: 8px; margin: 12px 0;">
+        <strong style="color: #4338ca;">#${caseId}: ${bugTitle}</strong>
+        <div style="font-size: 13px; color: #6b7280; margin-top: 4px;">Module: ${moduleName}</div>
+      </div>
+      <p style="color: #4b5563; font-size: 14px;">Trạng thái đã được chuyển sang <strong>Dev Đang Sửa (FIX)</strong>.</p>
+      <div style="text-align: center; margin-top: 20px;">
+        <a href="${appUrl}" style="display: inline-block; background: #4f46e5; color: #ffffff; text-decoration: none; padding: 10px 20px; border-radius: 6px; font-weight: 600;">
+          Theo Dõi Tiến Độ
+        </a>
+      </div>
+    </div>
+  `;
+
+  return sendEmail({
+    to: testerEmail,
+    subject: `[Tester Hub] 🛠️ Dev ${devName} đã nhận sửa bug #${caseId}: ${bugTitle}`,
+    html,
+  });
+}
+

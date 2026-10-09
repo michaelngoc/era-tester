@@ -72,9 +72,9 @@ export async function processGitPushImpact(payload: GitCommitPayload) {
       ]
     );
 
-    // 4. Find all active Testers/Members to notify
+    // 4. Find all active Testers & Admins to notify
     const usersRes = await query<{ email: string }>(
-      "SELECT email FROM era_tester_users WHERE status = 'ACTIVE'"
+      "SELECT email FROM era_tester_users WHERE status = 'ACTIVE' AND role IN ('TESTER', 'SUPER_ADMIN', 'MEMBER')"
     );
     const recipients = usersRes.rows.map((u) => u.email).filter(Boolean);
 

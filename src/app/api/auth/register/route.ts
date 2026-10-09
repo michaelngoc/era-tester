@@ -4,7 +4,7 @@ import { hashPassword } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, password, fullName } = await req.json();
+    const { email, password, fullName, role: requestedRole } = await req.json();
 
     if (!email || !password) {
       return NextResponse.json({ error: "Email và mật khẩu là bắt buộc" }, { status: 400 });
@@ -25,7 +25,15 @@ export async function POST(req: NextRequest) {
     const isFirstUser = count === 0;
     const isInitialAdmin = cleanEmail === (process.env.ADMIN_INITIAL_EMAIL || "admin@eraweb.io").toLowerCase();
 
-    const role = isFirstUser || isInitialAdmin ? "SUPER_ADMIN" : "MEMBER";
+    let role = "TESTER";
+    if (isFirstUser || isInitialAdmin) {
+      role = "SUPER_ADMIN";
+    } else if (requestedRole === "DEVELOPER") {
+      role = "DEVELOPER";
+    } else {
+      role = "TESTER";
+    }
+
     const status = isFirstUser || isInitialAdmin ? "ACTIVE" : "PENDING";
 
     const hashedPassword = await hashPassword(password);

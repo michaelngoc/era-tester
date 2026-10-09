@@ -9,8 +9,9 @@ import {
   Trash2,
   Shield,
   Clock,
-  Mail,
   UserCheck,
+  CheckSquare,
+  Code2,
 } from "lucide-react";
 
 export default function AdminUsersPage() {
@@ -52,6 +53,22 @@ export default function AdminUsersPage() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId, status }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchUsers();
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleUpdateRole = async (userId: number, role: string) => {
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, role }),
       });
       const data = await res.json();
       if (data.success) {
@@ -123,13 +140,35 @@ export default function AdminUsersPage() {
                       {u.email}
                     </td>
                     <td className="p-4">
-                      {u.role === "SUPER_ADMIN" ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                      {u.id === currentUser.id ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">
                           <Shield className="w-3 h-3" />
                           Super Admin
                         </span>
                       ) : (
-                        <span className="text-slate-400">Member</span>
+                        <div className="relative inline-block">
+                          <select
+                            value={u.role || "TESTER"}
+                            onChange={(e) => handleUpdateRole(u.id, e.target.value)}
+                            className={`px-2.5 py-1 rounded-xl text-xs font-semibold border focus:outline-none cursor-pointer transition ${
+                              u.role === "SUPER_ADMIN"
+                                ? "bg-amber-500/10 text-amber-300 border-amber-500/30"
+                                : u.role === "DEVELOPER"
+                                ? "bg-indigo-500/10 text-indigo-300 border-indigo-500/30"
+                                : "bg-sky-500/10 text-sky-300 border-sky-500/30"
+                            }`}
+                          >
+                            <option value="TESTER" className="bg-slate-900 text-slate-100">
+                              Tester / QA
+                            </option>
+                            <option value="DEVELOPER" className="bg-slate-900 text-slate-100">
+                              Developer
+                            </option>
+                            <option value="SUPER_ADMIN" className="bg-slate-900 text-slate-100">
+                              Super Admin
+                            </option>
+                          </select>
+                        </div>
                       )}
                     </td>
                     <td className="p-4">

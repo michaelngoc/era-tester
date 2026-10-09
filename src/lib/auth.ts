@@ -12,7 +12,7 @@ export interface UserSession {
   id: number;
   email: string;
   fullName: string;
-  role: "SUPER_ADMIN" | "MEMBER";
+  role: "SUPER_ADMIN" | "TESTER" | "DEVELOPER" | "MEMBER";
   status: "PENDING" | "ACTIVE" | "BANNED";
 }
 

@@ -447,6 +447,23 @@ export default function DashboardPage() {
     }
   };
 
+  const handleClaimTask = async (id: number, action: "claim_bug" | "claim_test") => {
+    try {
+      const res = await fetch(`/api/cases/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      const data = await res.json();
+      if (data.success && data.case) {
+        setCases((prev) => prev.map((c) => (c.id === id ? data.case : c)));
+        if (selectedCase?.id === id) setSelectedCase(data.case);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const handleAddChecklistCase = async (newCase: Partial<TestCase>) => {
     if (!selectedModule?.id) return;
     try {
@@ -974,6 +991,7 @@ export default function DashboardPage() {
                 onSelectCase={(c) => setSelectedCase(c)}
                 onStatusChange={handleStatusChange}
                 onAddNewCase={() => setShowAddCaseModal(true)}
+                onClaimTask={handleClaimTask}
               />
             )}
           </div>
@@ -992,6 +1010,7 @@ export default function DashboardPage() {
         onStatusChange={handleStatusChange}
         onDeleteCase={handleDeleteCase}
         onDeleteStep={handleDeleteStepFromFlow}
+        onClaimTask={handleClaimTask}
       />
 
       {/* Modal Chi Tiết / Sửa Test Case Toàn Diện */}

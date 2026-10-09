@@ -18,7 +18,7 @@ interface NavbarProps {
     id: number;
     email: string;
     fullName: string;
-    role: "SUPER_ADMIN" | "MEMBER";
+    role: "SUPER_ADMIN" | "TESTER" | "DEVELOPER" | "MEMBER";
   } | null;
 }
 
@@ -122,8 +122,14 @@ export default function Navbar({ user }: NavbarProps) {
                   <span className="text-amber-400 font-bold tracking-wider uppercase text-[9.5px]">
                     Super Admin
                   </span>
+                ) : user.role === "DEVELOPER" ? (
+                  <span className="text-indigo-400 font-bold tracking-wider uppercase text-[9.5px]">
+                    Developer
+                  </span>
                 ) : (
-                  <span className="text-slate-400">QA Specialist</span>
+                  <span className="text-sky-400 font-bold tracking-wider uppercase text-[9.5px]">
+                    Tester / QA
+                  </span>
                 )}
               </div>
             </div>

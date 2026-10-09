@@ -3,13 +3,24 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { UserPlus, Mail, Lock, User, ArrowRight, AlertCircle, CheckCircle2 } from "lucide-react";
+import {
+  UserPlus,
+  Mail,
+  Lock,
+  User,
+  ArrowRight,
+  AlertCircle,
+  CheckCircle2,
+  CheckSquare,
+  Code2,
+} from "lucide-react";
 
 export default function RegisterPage() {
   const router = useRouter();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [role, setRole] = useState<"TESTER" | "DEVELOPER">("TESTER");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -24,7 +35,7 @@ export default function RegisterPage() {
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fullName, email, password }),
+        body: JSON.stringify({ fullName, email, password, role }),
       });
 
       const data = await res.json();
@@ -125,8 +136,54 @@ export default function RegisterPage() {
             </div>
           </div>
 
-          <div className="p-3 bg-slate-950/60 border border-slate-800/80 rounded-xl text-xs text-slate-400">
-            ℹ️ Sau khi đăng ký, tài khoản sẽ được gửi đến <strong>Super Admin</strong> để phê duyệt trước khi bạn có thể truy cập dự án.
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">
+              Vai trò chính
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setRole("TESTER")}
+                className={`p-3 rounded-xl border text-left transition cursor-pointer ${
+                  role === "TESTER"
+                    ? "bg-sky-500/15 border-sky-500 text-white shadow-sm"
+                    : "bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700"
+                }`}
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <CheckSquare className={`w-4 h-4 ${role === "TESTER" ? "text-sky-400" : "text-slate-500"}`} />
+                  <span className="text-xs font-bold text-slate-200">Tester / QA</span>
+                </div>
+                <p className="text-[10.5px] text-slate-400 leading-tight">
+                  Tạo kịch bản, kiểm thử flow, báo cáo bug
+                </p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setRole("DEVELOPER")}
+                className={`p-3 rounded-xl border text-left transition cursor-pointer ${
+                  role === "DEVELOPER"
+                    ? "bg-indigo-500/15 border-indigo-500 text-white shadow-sm"
+                    : "bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700"
+                }`}
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <Code2 className={`w-4 h-4 ${role === "DEVELOPER" ? "text-indigo-400" : "text-slate-500"}`} />
+                  <span className="text-xs font-bold text-slate-200">Developer</span>
+                </div>
+                <p className="text-[10.5px] text-slate-400 leading-tight">
+                  Nhận task sửa bug, commit code fix
+                </p>
+              </button>
+            </div>
+          </div>
+
+          <div className="p-3 bg-slate-950/60 border border-slate-800/80 rounded-xl text-xs text-slate-400 flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" />
+            <span>
+              Sau khi đăng ký, tài khoản sẽ được gửi đến <strong>Super Admin</strong> để phê duyệt trước khi bạn có thể truy cập dự án.
+            </span>
           </div>
 
           <button

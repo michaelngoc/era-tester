@@ -58,12 +58,67 @@ export default function CaseDetailModal({
   const [activeTab, setActiveTab] = useState<"scenario" | "io" | "json" | "evidence">("scenario");
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [users, setUsers] = useState<{ testers: any[]; developers: any[] }>({
+    testers: [],
+    developers: [],
+  });
 
   useEffect(() => {
     setFormData(testCase);
   }, [testCase]);
 
+  useEffect(() => {
+    fetch("/api/users")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.testers && data?.developers) {
+          setUsers({ testers: data.testers, developers: data.developers });
+        }
+      })
+      .catch((e) => console.error("Could not fetch users for assignment:", e));
+  }, []);
+
   if (!testCase || !formData) return null;
+
+  const handleClaimBug = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/cases/${formData.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "claim_bug" }),
+      });
+      const data = await res.json();
+      if (data.success && data.case) {
+        setFormData(data.case);
+        onUpdate(data.case);
+      }
+    } catch (err) {
+      console.error("Claim bug error:", err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleClaimTest = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/cases/${formData.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "claim_test" }),
+      });
+      const data = await res.json();
+      if (data.success && data.case) {
+        setFormData(data.case);
+        onUpdate(data.case);
+      }
+    } catch (err) {
+      console.error("Claim test error:", err);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -80,6 +135,7 @@ export default function CaseDetailModal({
           responsePayload: formData.response_payload,
           status: formData.status,
           priority: formData.priority,
+          assignedTo: formData.assigned_to,
         }),
       });
       const data = await res.json();
@@ -163,7 +219,7 @@ export default function CaseDetailModal({
             </button>
           </div>
 
-          {/* Quick Status & Priority selectors */}
+          {/* Quick Status, Priority, Assignee & Claim Action selectors */}
           <div className="flex flex-wrap items-center gap-3 mt-4 pt-3 border-t border-slate-800/80">
             <div className="flex items-center gap-2 text-xs">
               <span className="text-slate-400 font-semibold">Trạng thái:</span>
@@ -192,6 +248,64 @@ export default function CaseDetailModal({
                 <option value="CRITICAL">Khẩn Cấp (Critical)</option>
               </select>
             </div>
+
+            {/* Phân công cho Developer / Tester */}
+            <div className="flex items-center gap-2 text-xs">
+              <span className="text-slate-400 font-semibold">Phụ trách:</span>
+              <select
+                value={formData.assigned_to || ""}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    assigned_to: e.target.value ? Number(e.target.value) : null,
+                  })
+                }
+                className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-200 focus:outline-none focus:border-sky-500 cursor-pointer max-w-[190px] truncate"
+              >
+                <option value="">Chưa gán (Chờ nhận task)</option>
+                <optgroup label="Developers (Sửa Bug)">
+                  {users.developers.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.full_name || d.email} (Dev)
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="Testers / QA (Kiểm Thử)">
+                  {users.testers.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.full_name || t.email} (Tester)
+                    </option>
+                  ))}
+                </optgroup>
+              </select>
+            </div>
+
+            {/* Quick Claim Buttons */}
+            {formData.status === "NEW" && (
+              <button
+                type="button"
+                onClick={handleClaimBug}
+                disabled={saving}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-md shadow-indigo-600/25 transition cursor-pointer"
+                title="Tự động gán cho bạn và chuyển trạng thái sang Dev Đang Sửa (FIX)"
+              >
+                <Wrench className="w-3.5 h-3.5" />
+                <span>Nhận Sửa Bug Này</span>
+              </button>
+            )}
+
+            {formData.is_impacted_by_git && (
+              <button
+                type="button"
+                onClick={handleClaimTest}
+                disabled={saving}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-amber-300 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 shadow-sm transition cursor-pointer"
+                title="Tự động gán cho bạn phụ trách kiểm thử kịch bản này"
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Nhận Kiểm Thử Lại</span>
+              </button>
+            )}
           </div>
 
           {/* Navigation Tabs */}

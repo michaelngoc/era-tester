@@ -28,6 +28,7 @@ interface StepChecklistDrawerProps {
   onStatusChange: (id: number, nextStatus: "NEW" | "FIX" | "VERIFY" | "CLOSED") => void;
   onDeleteCase: (id: number) => void;
   onDeleteStep?: (stepId: string) => void;
+  onClaimTask?: (id: number, action: "claim_bug" | "claim_test") => void;
 }
 
 export default function StepChecklistDrawer({
@@ -41,6 +42,7 @@ export default function StepChecklistDrawer({
   onStatusChange,
   onDeleteCase,
   onDeleteStep,
+  onClaimTask,
 }: StepChecklistDrawerProps) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [newTitle, setNewTitle] = useState("");
@@ -281,7 +283,37 @@ export default function StepChecklistDrawer({
                 </span>
               </div>
 
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1.5">
+                {/* Nút Nhận Sửa Bug */}
+                {item.status === "NEW" && onClaimTask && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onClaimTask(item.id, "claim_bug");
+                    }}
+                    className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm transition"
+                    title="Nhận sửa bug này (chuyển sang FIX)"
+                  >
+                    Nhận Sửa
+                  </button>
+                )}
+
+                {/* Nút Nhận Kiểm Thử */}
+                {item.is_impacted_by_git && onClaimTask && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onClaimTask(item.id, "claim_test");
+                    }}
+                    className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 shadow-sm transition"
+                    title="Nhận kiểm thử lại kịch bản này"
+                  >
+                    Nhận Test
+                  </button>
+                )}
+
                 {/* 1-click toggle pass / fail */}
                 <button
                   type="button"
@@ -331,6 +363,14 @@ export default function StepChecklistDrawer({
                 Lỗi: {item.actual_result}
               </div>
             )}
+
+            {/* Hiển thị Người phụ trách */}
+            <div className="mt-2 pt-2 border-t border-slate-900 flex items-center justify-between text-[10.5px] text-slate-500 font-mono">
+              <span>Phụ trách:</span>
+              <span className={`font-semibold ${item.assigned_name ? "text-slate-300" : "text-amber-500/80 italic"}`}>
+                {item.assigned_name || (item.status === "NEW" ? "Chưa có Dev nhận" : "Chưa giao")}
+              </span>
+            </div>
           </div>
         ))}
 
