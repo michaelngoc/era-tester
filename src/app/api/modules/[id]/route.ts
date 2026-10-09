@@ -12,9 +12,9 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  const { name, filePatterns } = await req.json();
+  const { name, filePatterns, assignedTesters } = await req.json();
 
-  const patterns = filePatterns
+  const patterns = filePatterns !== undefined
     ? Array.isArray(filePatterns)
       ? filePatterns
       : String(filePatterns)
@@ -26,10 +26,11 @@ export async function PATCH(
   const res = await query(
     `UPDATE era_tester_modules
      SET name = COALESCE($1, name),
-         file_patterns = COALESCE($2, file_patterns)
-     WHERE id = $3
+         file_patterns = COALESCE($2, file_patterns),
+         assigned_testers = COALESCE($3, assigned_testers)
+     WHERE id = $4
      RETURNING *`,
-    [name?.trim(), patterns, id]
+    [name?.trim(), patterns, assignedTesters, id]
   );
 
   if (res.rows.length === 0) {

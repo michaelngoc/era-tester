@@ -32,6 +32,7 @@ export async function POST(req: NextRequest) {
     const commitMessage = headCommit.message || "Push to tester branch";
     const authorName = headCommit.author?.name || payload.pusher?.name || "Dev";
     const authorEmail = headCommit.author?.email || payload.pusher?.email || "";
+    const repoFullName = payload.repository?.full_name || "";
 
     const result = await processGitPushImpact({
       commitHash,
@@ -40,6 +41,7 @@ export async function POST(req: NextRequest) {
       authorEmail,
       branch,
       modifiedFiles,
+      repoFullName,
     });
 
     return NextResponse.json({

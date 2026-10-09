@@ -20,7 +20,15 @@ export async function GET(req: NextRequest) {
            COUNT(CASE WHEN c.status = 'FIX' THEN 1 END) AS count_fix,
            COUNT(CASE WHEN c.status = 'VERIFY' THEN 1 END) AS count_verify,
            COUNT(CASE WHEN c.status = 'CLOSED' THEN 1 END) AS count_closed,
-           COUNT(CASE WHEN c.is_impacted_by_git = TRUE THEN 1 END) AS count_git_impacted
+           COUNT(CASE WHEN c.is_impacted_by_git = TRUE THEN 1 END) AS count_git_impacted,
+           COALESCE(
+             (
+               SELECT json_agg(json_build_object('id', u.id, 'name', u.full_name, 'email', u.email))
+               FROM era_tester_users u
+               WHERE u.id = ANY(m.assigned_testers)
+             ),
+             '[]'::json
+           ) AS assigned_tester_users
     FROM era_tester_modules m
     JOIN era_tester_projects p ON p.id = m.project_id
     LEFT JOIN era_tester_cases c ON c.module_id = m.id
@@ -47,7 +55,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Chưa xác thực" }, { status: 401 });
   }
 
-  const { projectId, name, filePatterns } = await req.json();
+  const { projectId, name, filePatterns, assignedTesters = [] } = await req.json();
 
   if (!projectId || !name) {
     return NextResponse.json({ error: "Thiếu projectId hoặc tên nhóm test" }, { status: 400 });
@@ -61,10 +69,10 @@ export async function POST(req: NextRequest) {
         .filter(Boolean);
 
   const res = await query(
-    `INSERT INTO era_tester_modules (project_id, name, file_patterns)
-     VALUES ($1, $2, $3)
+    `INSERT INTO era_tester_modules (project_id, name, file_patterns, assigned_testers)
+     VALUES ($1, $2, $3, $4)
      RETURNING *`,
-    [projectId, name.trim(), patterns]
+    [projectId, name.trim(), patterns, assignedTesters]
   );
 
   return NextResponse.json({ success: true, module: res.rows[0] });
