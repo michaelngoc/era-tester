@@ -37,3 +37,9 @@
 .dark ::-webkit-scrollbar-thumb:hover {
   background: #475569;
 }
+
+/* Hide React Flow attribution watermark */
+.react-flow__attribution {
+  display: none !important;
+}
+

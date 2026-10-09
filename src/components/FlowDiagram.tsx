@@ -356,6 +356,7 @@ export default function FlowDiagram({
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         fitView
+        proOptions={{ hideAttribution: true }}
       >
         <Controls className="!bg-white/90 dark:!bg-slate-900/90 !border-slate-200 dark:!border-slate-800/80 !text-slate-800 dark:!text-white rounded-2xl !backdrop-blur-md shadow-2xl" />
         <MiniMap
