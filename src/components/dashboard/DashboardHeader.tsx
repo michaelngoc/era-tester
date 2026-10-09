@@ -27,6 +27,7 @@ export interface DashboardStats {
 }
 
 export interface DashboardHeaderProps {
+  userRole?: string;
   selectedProject: any;
   selectedModule: any;
   viewMode: "flow" | "kanban";
@@ -43,6 +44,7 @@ export interface DashboardHeaderProps {
 }
 
 export function DashboardHeader({
+  userRole,
   selectedProject,
   selectedModule,
   viewMode,
@@ -57,6 +59,8 @@ export function DashboardHeader({
   searchQuery,
   onSearchQueryChange,
 }: DashboardHeaderProps) {
+  const isSuperAdmin = userRole === "SUPER_ADMIN";
+  const isDev = userRole === "DEVELOPER";
   return (
     <div className="pb-4 mb-4 border-b border-slate-200 dark:border-slate-800/80 space-y-3">
       {/* Module Title & Actions */}
@@ -124,14 +128,16 @@ export function DashboardHeader({
             </button>
           </div>
 
-          <button
-            onClick={onOpenAddCaseModal}
-            disabled={!selectedModule}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 disabled:opacity-50 text-white text-xs font-bold rounded-2xl transition-all shadow-lg shadow-sky-600/20 cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Thêm Kịch Bản</span>
-          </button>
+          {!isDev && (
+            <button
+              onClick={onOpenAddCaseModal}
+              disabled={!selectedModule}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 disabled:opacity-50 text-white text-xs font-bold rounded-2xl transition-all shadow-lg shadow-sky-600/20 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Thêm Kịch Bản</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -162,17 +168,19 @@ export function DashboardHeader({
                   </span>
                 )}
 
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDeleteFlow(flow);
-                  }}
-                  title="Xóa Luồng Thao Tác này"
-                  className="ml-1 text-slate-400 hover:text-rose-600 dark:text-slate-500 dark:hover:text-rose-400 transition"
-                >
-                  <Trash2 className="w-3 h-3" />
-                </button>
+                {isSuperAdmin && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDeleteFlow(flow);
+                    }}
+                    title="Xóa Luồng Thao Tác này (Chỉ Super Admin)"
+                    className="ml-1 text-slate-400 hover:text-rose-600 dark:text-slate-500 dark:hover:text-rose-400 transition"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                )}
               </div>
             );
           })}
@@ -185,26 +193,28 @@ export function DashboardHeader({
         </div>
 
         {/* Action Buttons for User Flows */}
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            onClick={() => onOpenFlowModal("login")}
-            disabled={!selectedModule}
-            title="Tạo sẵn mẫu Login: 4 bước và 8 kịch bản kiểm thử mẫu"
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/20 border border-emerald-200 dark:border-emerald-500/25 transition cursor-pointer"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>+ Mẫu Luồng Đăng Nhập</span>
-          </button>
+        {!isDev && (
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => onOpenFlowModal("login")}
+              disabled={!selectedModule}
+              title="Tạo sẵn mẫu Login: 4 bước và 8 kịch bản kiểm thử mẫu"
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/20 border border-emerald-200 dark:border-emerald-500/25 transition cursor-pointer"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>+ Mẫu Luồng Đăng Nhập</span>
+            </button>
 
-          <button
-            onClick={() => onOpenFlowModal("custom")}
-            disabled={!selectedModule}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold text-sky-700 dark:text-sky-400 bg-sky-50 hover:bg-sky-100 dark:bg-sky-500/10 dark:hover:bg-sky-500/20 border border-sky-200 dark:border-sky-500/25 transition cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Tạo Luồng Mới</span>
-          </button>
-        </div>
+            <button
+              onClick={() => onOpenFlowModal("custom")}
+              disabled={!selectedModule}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold text-sky-700 dark:text-sky-400 bg-sky-50 hover:bg-sky-100 dark:bg-sky-500/10 dark:hover:bg-sky-500/20 border border-sky-200 dark:border-sky-500/25 transition cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Tạo Luồng Mới</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* KPI Metrics Strip */}

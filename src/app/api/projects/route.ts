@@ -15,8 +15,9 @@ export async function GET() {
            COUNT(DISTINCT CASE WHEN c.status = 'NEW' THEN c.id END) AS new_bugs,
            COUNT(DISTINCT CASE WHEN c.is_impacted_by_git = TRUE THEN c.id END) AS git_impacted_cases
     FROM era_tester_projects p
-    LEFT JOIN era_tester_modules m ON m.project_id = p.id
-    LEFT JOIN era_tester_cases c ON c.module_id = m.id
+    LEFT JOIN era_tester_modules m ON m.project_id = p.id AND (m.is_deleted IS NULL OR m.is_deleted = FALSE)
+    LEFT JOIN era_tester_cases c ON c.module_id = m.id AND (c.is_deleted IS NULL OR c.is_deleted = FALSE)
+    WHERE (p.is_deleted IS NULL OR p.is_deleted = FALSE)
     GROUP BY p.id
     ORDER BY p.id ASC
   `);
@@ -30,10 +31,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Chưa xác thực hoặc chưa được duyệt" }, { status: 401 });
   }
 
+  if (user.role === "DEVELOPER") {
+    return NextResponse.json({ error: "Lập trình viên không có quyền tạo dự án mới" }, { status: 403 });
+  }
+
   const { name, slug, description, githubRepo } = await req.json();
 
-  if (!name || !slug) {
-    return NextResponse.json({ error: "Tên và Slug dự án là bắt buộc" }, { status: 400 });
+  if (!name || name.trim().length < 2 || !slug) {
+    return NextResponse.json({ error: "Tên (ít nhất 2 ký tự) và Slug dự án là bắt buộc" }, { status: 400 });
   }
 
   const cleanSlug = slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-");

@@ -23,7 +23,8 @@ export async function GET(req: NextRequest) {
     JOIN era_tester_modules m ON m.id = c.module_id
     LEFT JOIN era_tester_users u_assigned ON u_assigned.id = c.assigned_to
     LEFT JOIN era_tester_users u_creator ON u_creator.id = c.created_by
-    WHERE 1=1
+    WHERE (c.is_deleted IS NULL OR c.is_deleted = FALSE)
+      AND (m.is_deleted IS NULL OR m.is_deleted = FALSE)
   `;
   const params: any[] = [];
 
@@ -52,6 +53,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Chưa xác thực" }, { status: 401 });
   }
 
+  if (user.role === "DEVELOPER") {
+    return NextResponse.json(
+      { error: "Lập trình viên không có quyền tạo kịch bản kiểm thử mới!" },
+      { status: 403 }
+    );
+  }
+
   const data = await req.json();
   const modId = data.moduleId ?? data.module_id;
   const fId = data.flowId ?? data.flow_id ?? null;
@@ -59,7 +67,7 @@ export async function POST(req: NextRequest) {
   const title = (data.title || "").trim();
   const inputData = data.inputData ?? data.input_data ?? "";
   const outputData = data.outputData ?? data.output_data ?? "";
-  const expectedResult = data.expectedResult ?? data.expected_result ?? "";
+  const expectedResult = (data.expectedResult ?? data.expected_result ?? "").trim();
   const actualResult = data.actualResult ?? data.actual_result ?? "";
   const responsePayload = data.responsePayload ?? data.response_payload ?? "";
   const evidenceUrls = data.evidenceUrls ?? data.evidence_urls ?? [];
@@ -67,8 +75,18 @@ export async function POST(req: NextRequest) {
   const priority = data.priority || "MEDIUM";
   const assignedTo = data.assignedTo ?? data.assigned_to ?? null;
 
-  if (!modId || !title) {
-    return NextResponse.json({ error: "Thiếu moduleId hoặc tiêu đề test case" }, { status: 400 });
+  if (!modId || !title || title.length < 3) {
+    return NextResponse.json(
+      { error: "Tiêu đề test case không được để trống và phải có ít nhất 3 ký tự!" },
+      { status: 400 }
+    );
+  }
+
+  if (!expectedResult || expectedResult.length === 0) {
+    return NextResponse.json(
+      { error: "Kết quả kỳ vọng (Expected Result) không được để trống!" },
+      { status: 400 }
+    );
   }
 
   const res = await query(

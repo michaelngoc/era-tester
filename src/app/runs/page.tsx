@@ -23,14 +23,15 @@ export default async function RunsPage() {
              COUNT(DISTINCT CASE WHEN c.status = 'NEW' THEN c.id END) as failed_cases_count,
              COUNT(DISTINCT CASE WHEN c.status IN ('FIX', 'VERIFY') THEN c.id END) as fixing_cases_count
       FROM era_tester_runs r
-      JOIN era_tester_projects p ON p.id = r.project_id
+      JOIN era_tester_projects p ON p.id = r.project_id AND (p.is_deleted IS NULL OR p.is_deleted = FALSE)
       LEFT JOIN era_tester_users u ON u.id = r.created_by
-      LEFT JOIN era_tester_cases c ON c.last_run_id = r.id
+      LEFT JOIN era_tester_cases c ON c.last_run_id = r.id AND (c.is_deleted IS NULL OR c.is_deleted = FALSE)
+      WHERE (r.is_deleted IS NULL OR r.is_deleted = FALSE)
       GROUP BY r.id, p.name, p.github_repo, u.full_name, u.email
       ORDER BY r.created_at DESC
     `),
     query<{ id: number; name: string }>(`
-      SELECT id, name FROM era_tester_projects ORDER BY id ASC
+      SELECT id, name FROM era_tester_projects WHERE (is_deleted IS NULL OR is_deleted = FALSE) ORDER BY id ASC
     `),
   ]);
 

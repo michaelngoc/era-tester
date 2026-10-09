@@ -11,8 +11,23 @@ export async function PATCH(
     return NextResponse.json({ error: "Chưa xác thực" }, { status: 401 });
   }
 
+  // Developer không được sửa thông tin module
+  if (user.role === "DEVELOPER") {
+    return NextResponse.json(
+      { error: "Lập trình viên không có quyền chỉnh sửa nhóm kiểm thử." },
+      { status: 403 }
+    );
+  }
+
   const { id } = await params;
   const { name, filePatterns, assignedTesters } = await req.json();
+
+  if (name !== undefined && name.trim().length < 2) {
+    return NextResponse.json(
+      { error: "Tên nhóm kiểm thử không được để trống hoặc dưới 2 ký tự." },
+      { status: 400 }
+    );
+  }
 
   const patterns = filePatterns !== undefined
     ? Array.isArray(filePatterns)
@@ -28,20 +43,20 @@ export async function PATCH(
      SET name = COALESCE($1, name),
          file_patterns = COALESCE($2, file_patterns),
          assigned_testers = COALESCE($3, assigned_testers)
-     WHERE id = $4
+     WHERE id = $4 AND (is_deleted IS NULL OR is_deleted = FALSE)
      RETURNING *`,
     [name?.trim(), patterns, assignedTesters, id]
   );
 
   if (res.rows.length === 0) {
-    return NextResponse.json({ error: "Không tìm thấy nhóm test" }, { status: 404 });
+    return NextResponse.json({ error: "Không tìm thấy nhóm kiểm thử hoặc nhóm đã bị xóa" }, { status: 404 });
   }
 
   return NextResponse.json({ success: true, module: res.rows[0] });
 }
 
 export async function DELETE(
-  req: NextRequest,
+  _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const user = await getCurrentUser();
@@ -49,8 +64,23 @@ export async function DELETE(
     return NextResponse.json({ error: "Chưa xác thực" }, { status: 401 });
   }
 
-  const { id } = await params;
-  await query("DELETE FROM era_tester_modules WHERE id = $1", [id]);
+  // CHỈ SUPER ADMIN MỚI CÓ QUYỀN XÓA NHÓM KIỂM THỬ
+  if (user.role !== "SUPER_ADMIN") {
+    return NextResponse.json(
+      { error: "BỊ CHẶN: Chỉ Quản Trị Tối Cao (Super Admin) mới có quyền xóa nhóm kiểm thử!" },
+      { status: 403 }
+    );
+  }
 
-  return NextResponse.json({ success: true, message: "Đã xóa nhóm test thành công" });
+  const { id } = await params;
+
+  // Áp dụng XÓA MỀM (Soft Delete)
+  await query(
+    `UPDATE era_tester_modules 
+     SET is_deleted = TRUE, deleted_at = NOW() 
+     WHERE id = $1`,
+    [id]
+  );
+
+  return NextResponse.json({ success: true, message: "Đã chuyển nhóm kiểm thử vào kho lưu trữ (Xóa mềm an toàn)" });
 }

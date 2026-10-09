@@ -36,8 +36,9 @@ export async function getInitialProjects(): Promise<ProjectItem[]> {
              COUNT(DISTINCT CASE WHEN c.status = 'NEW' THEN c.id END)::int AS new_bugs,
              COUNT(DISTINCT CASE WHEN c.is_impacted_by_git = TRUE THEN c.id END)::int AS git_impacted_cases
       FROM era_tester_projects p
-      LEFT JOIN era_tester_modules m ON m.project_id = p.id
-      LEFT JOIN era_tester_cases c ON c.module_id = m.id
+      LEFT JOIN era_tester_modules m ON m.project_id = p.id AND (m.is_deleted IS NULL OR m.is_deleted = FALSE)
+      LEFT JOIN era_tester_cases c ON c.module_id = m.id AND (c.is_deleted IS NULL OR c.is_deleted = FALSE)
+      WHERE (p.is_deleted IS NULL OR p.is_deleted = FALSE)
       GROUP BY p.id
       ORDER BY p.id ASC
     `);

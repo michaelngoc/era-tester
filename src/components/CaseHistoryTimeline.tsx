@@ -5,10 +5,10 @@ import {
   Clock,
   GitCommit,
   Send,
-  MessageSquare,
   Sparkles,
   FileCode,
   Image as ImageIcon,
+  RotateCcw,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
@@ -26,22 +26,28 @@ export interface HistoryItem {
   git_commit_hash?: string | null;
   evidence_urls?: string[] | null;
   response_payload?: any | null;
+  old_snapshot?: any | null;
   created_at: string;
 }
 
 export interface CaseHistoryTimelineProps {
   caseId: number;
   className?: string;
+  userRole?: string;
+  onRollbackSuccess?: (restoredCase: any) => void;
 }
 
 export default function CaseHistoryTimeline({
   caseId,
   className = "",
+  userRole,
+  onRollbackSuccess,
 }: CaseHistoryTimelineProps) {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [newNote, setNewNote] = useState("");
   const [submittingNote, setSubmittingNote] = useState(false);
+  const [rollingBackId, setRollingBackId] = useState<number | null>(null);
 
   const fetchHistory = useCallback(async () => {
     try {
@@ -87,8 +93,53 @@ export default function CaseHistoryTimeline({
     }
   };
 
+  const handleRollback = async (item: HistoryItem) => {
+    if (!item.old_snapshot) return;
+    const confirmed = confirm(
+      `XÁC NHẬN KHÔI PHỤC (ROLLBACK):\nBạn có chắc chắn muốn đưa kịch bản kiểm thử về bản chụp tại mốc thời gian này?\n\n- Tiêu đề: "${item.old_snapshot.title}"\n- Trạng thái: ${item.old_snapshot.status}\n- Mức độ ưu tiên: ${item.old_snapshot.priority}`
+    );
+    if (!confirmed) return;
+
+    setRollingBackId(item.id);
+    try {
+      const res = await fetch(`/api/cases/${caseId}/rollback`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ historyId: item.id }),
+      });
+      const data = await res.json();
+      if (data.success && data.case) {
+        alert(data.message || "Đã khôi phục thành công kịch bản kiểm thử!");
+        await fetchHistory();
+        if (onRollbackSuccess) {
+          onRollbackSuccess(data.case);
+        }
+      } else {
+        alert(data.error || "Không thể khôi phục bản chụp này");
+      }
+    } catch (err: any) {
+      console.error("Rollback error:", err);
+      alert("Lỗi kết nối khi gửi yêu cầu khôi phục!");
+    } finally {
+      setRollingBackId(null);
+    }
+  };
+
   const getActionBadge = (action: string) => {
     switch (action) {
+      case "ROLLBACK_RESTORE":
+        return (
+          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 flex items-center gap-1">
+            <RotateCcw className="w-3 h-3" />
+            Khôi Phục Bản Chụp
+          </span>
+        );
+      case "CONTENT_UPDATE":
+        return (
+          <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30">
+            Cập Nhật Nội Dung
+          </span>
+        );
       case "AUTO_GIT_VERIFY":
         return (
           <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-500/15 text-purple-600 dark:text-purple-400 border border-purple-500/30 flex items-center gap-1">
@@ -260,6 +311,33 @@ export default function CaseHistoryTimeline({
                       : JSON.stringify(item.response_payload, null, 2)}
                   </pre>
                 </details>
+              )}
+
+              {/* Bản chụp Snapshot & 1-Click Rollback */}
+              {item.old_snapshot && (
+                <div className="mt-2.5 p-3 rounded-2xl bg-amber-500/10 border border-amber-300 dark:border-amber-500/30 flex flex-wrap items-center justify-between gap-3">
+                  <div className="text-[11px] text-amber-900 dark:text-amber-200 space-y-0.5">
+                    <div className="font-bold flex items-center gap-1.5">
+                      <span>📸 Bản Chụp Nội Dung (Snapshot):</span>
+                    </div>
+                    <div className="text-[11px] text-slate-700 dark:text-slate-300 font-mono">
+                      &quot;{item.old_snapshot.title}&quot; • Trạng thái: {item.old_snapshot.status} • Ưu tiên: {item.old_snapshot.priority}
+                    </div>
+                  </div>
+
+                  {userRole !== "DEVELOPER" && (
+                    <button
+                      type="button"
+                      onClick={() => handleRollback(item)}
+                      disabled={rollingBackId === item.id}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-amber-800 dark:text-amber-100 bg-amber-200/80 hover:bg-amber-300 dark:bg-amber-500/25 dark:hover:bg-amber-500/40 border border-amber-300 dark:border-amber-500/40 transition shadow-sm cursor-pointer disabled:opacity-50"
+                      title="Khôi phục lại toàn bộ nội dung kịch bản theo bản chụp này"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>{rollingBackId === item.id ? "Đang hoàn tác..." : "Khôi Phục Bản Này"}</span>
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           </div>

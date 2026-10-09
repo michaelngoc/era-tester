@@ -4,6 +4,7 @@ import React from "react";
 import { FolderGit2, Layers, Plus, Pencil, Trash2 } from "lucide-react";
 
 export interface ProjectSidebarProps {
+  userRole?: string;
   projects: any[];
   selectedProject: any;
   onSelectProject: (proj: any) => void;
@@ -20,6 +21,7 @@ export interface ProjectSidebarProps {
 }
 
 export function ProjectSidebar({
+  userRole,
   projects,
   selectedProject,
   onSelectProject,
@@ -33,6 +35,9 @@ export function ProjectSidebar({
   onOpenEditModule,
   onDeleteModule,
 }: ProjectSidebarProps) {
+  const isSuperAdmin = userRole === "SUPER_ADMIN";
+  const isDev = userRole === "DEVELOPER";
+
   return (
     <aside className="w-80 bg-white/80 dark:bg-slate-900/60 backdrop-blur-xl border-r border-slate-200 dark:border-slate-800/80 flex flex-col shrink-0 transition-colors duration-150">
       {/* Projects Select Section */}
@@ -41,14 +46,16 @@ export function ProjectSidebar({
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
             Dự Án Đang Kiểm Thử
           </span>
-          <button
-            onClick={onOpenCreateProject}
-            title="Tạo dự án mới"
-            className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-semibold text-sky-600 dark:text-sky-400 bg-sky-50 hover:bg-sky-100 dark:bg-sky-500/10 dark:hover:bg-sky-500/20 border border-sky-200 dark:border-sky-500/20 transition cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Thêm</span>
-          </button>
+          {!isDev && (
+            <button
+              onClick={onOpenCreateProject}
+              title="Tạo dự án mới"
+              className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-semibold text-sky-600 dark:text-sky-400 bg-sky-50 hover:bg-sky-100 dark:bg-sky-500/10 dark:hover:bg-sky-500/20 border border-sky-200 dark:border-sky-500/20 transition cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Thêm</span>
+            </button>
+          )}
         </div>
 
         <div className="space-y-1 max-h-52 overflow-y-auto pr-1">
@@ -81,24 +88,28 @@ export function ProjectSidebar({
                   )}
 
                   {/* Quick Edit & Delete Project buttons */}
-                  <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-opacity">
-                    <button
-                      type="button"
-                      onClick={(e) => onOpenEditProject(p, e)}
-                      title="Sửa dự án"
-                      className="p-1 hover:bg-white/20 rounded transition text-slate-400 hover:text-slate-700 dark:text-slate-300 dark:hover:text-white"
-                    >
-                      <Pencil className="w-3 h-3" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => onDeleteProject(p, e)}
-                      title="Xóa dự án"
-                      className="p-1 hover:bg-rose-500/20 rounded transition text-slate-400 hover:text-rose-600 dark:text-slate-300 dark:hover:text-rose-300"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </button>
-                  </div>
+                  {!isDev && (
+                    <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-opacity">
+                      <button
+                        type="button"
+                        onClick={(e) => onOpenEditProject(p, e)}
+                        title="Sửa dự án"
+                        className="p-1 hover:bg-white/20 rounded transition text-slate-400 hover:text-slate-700 dark:text-slate-300 dark:hover:text-white"
+                      >
+                        <Pencil className="w-3 h-3" />
+                      </button>
+                      {isSuperAdmin && (
+                        <button
+                          type="button"
+                          onClick={(e) => onDeleteProject(p, e)}
+                          title="Xóa dự án (Chỉ Super Admin)"
+                          className="p-1 hover:bg-rose-500/20 rounded transition text-slate-400 hover:text-rose-600 dark:text-slate-300 dark:hover:text-rose-300"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -119,15 +130,17 @@ export function ProjectSidebar({
             Nhóm Kiểm Thử (Modules)
           </span>
 
-          <button
-            onClick={onOpenCreateModule}
-            title="Tạo nhóm kiểm thử mới"
-            disabled={!selectedProject}
-            className="flex items-center gap-1 px-2 py-1 rounded-xl text-[11px] font-semibold text-sky-600 dark:text-sky-400 bg-sky-50 hover:bg-sky-100 dark:bg-sky-500/10 dark:hover:bg-sky-500/20 disabled:opacity-40 border border-sky-200 dark:border-sky-500/20 transition-all cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Thêm</span>
-          </button>
+          {!isDev && (
+            <button
+              onClick={onOpenCreateModule}
+              title="Tạo nhóm kiểm thử mới"
+              disabled={!selectedProject}
+              className="flex items-center gap-1 px-2 py-1 rounded-xl text-[11px] font-semibold text-sky-600 dark:text-sky-400 bg-sky-50 hover:bg-sky-100 dark:bg-sky-500/10 dark:hover:bg-sky-500/20 disabled:opacity-40 border border-sky-200 dark:border-sky-500/20 transition-all cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Thêm</span>
+            </button>
+          )}
         </div>
 
         <div className="space-y-1.5">
@@ -183,24 +196,28 @@ export function ProjectSidebar({
                   </span>
 
                   {/* Edit & Delete Module buttons */}
-                  <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-opacity">
-                    <button
-                      type="button"
-                      onClick={(e) => onOpenEditModule(m, e)}
-                      title="Sửa nhóm kiểm thử & phân công Tester"
-                      className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition text-slate-500 dark:text-slate-400 hover:text-sky-600 dark:hover:text-sky-300"
-                    >
-                      <Pencil className="w-3 h-3" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => onDeleteModule(m, e)}
-                      title="Xóa nhóm kiểm thử"
-                      className="p-1 hover:bg-rose-100 dark:hover:bg-slate-700 rounded transition text-slate-500 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </button>
-                  </div>
+                  {!isDev && (
+                    <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-opacity">
+                      <button
+                        type="button"
+                        onClick={(e) => onOpenEditModule(m, e)}
+                        title="Sửa nhóm kiểm thử & phân công Tester"
+                        className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition text-slate-500 dark:text-slate-400 hover:text-sky-600 dark:hover:text-sky-300"
+                      >
+                        <Pencil className="w-3 h-3" />
+                      </button>
+                      {isSuperAdmin && (
+                        <button
+                          type="button"
+                          onClick={(e) => onDeleteModule(m, e)}
+                          title="Xóa nhóm kiểm thử (Chỉ Super Admin)"
+                          className="p-1 hover:bg-rose-100 dark:hover:bg-slate-700 rounded transition text-slate-500 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             );

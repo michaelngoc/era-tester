@@ -11,6 +11,7 @@ import { ProjectModal } from "@/components/modals/ProjectModal";
 import { ModuleModal } from "@/components/modals/ModuleModal";
 import { FlowModal } from "@/components/modals/FlowModal";
 import { AddCaseModal } from "@/components/modals/AddCaseModal";
+import { ConfirmDeleteModal } from "@/components/modals/ConfirmDeleteModal";
 
 export interface DashboardClientProps {
   currentUser: any;
@@ -19,6 +20,7 @@ export interface DashboardClientProps {
 }
 
 export default function DashboardClient({
+  currentUser,
   initialProjects,
   availableTesters,
 }: DashboardClientProps) {
@@ -27,6 +29,8 @@ export default function DashboardClient({
   const [selectedProject, setSelectedProject] = useState<any>(
     initialProjects.length > 0 ? initialProjects[0] : null
   );
+  const [confirmDeleteProject, setConfirmDeleteProject] = useState<any>(null);
+  const [isDeletingProject, setIsDeletingProject] = useState(false);
   const [projectModal, setProjectModal] = useState<{
     open: boolean;
     mode: "create" | "edit";
@@ -157,24 +161,31 @@ export default function DashboardClient({
   }, [selectedModule, fetchFlowsAndCases]);
 
   // Project handlers
-  const handleDeleteProject = async (proj: any, e: React.MouseEvent) => {
+  const handleDeleteProject = (proj: any, e: React.MouseEvent) => {
     e.stopPropagation();
-    const confirmed = confirm(
-      `CẢNH BÁO: Bạn có chắc chắn muốn xóa dự án "${proj.name}"?\nToàn bộ nhóm kiểm thử, user flow và checklist liên quan sẽ bị xóa vĩnh viễn!`
-    );
-    if (!confirmed) return;
+    setConfirmDeleteProject(proj);
+  };
 
+  const handleExecuteDeleteProject = async () => {
+    if (!confirmDeleteProject) return;
+    setIsDeletingProject(true);
     try {
-      const res = await fetch(`/api/projects/${proj.id}`, { method: "DELETE" });
+      const res = await fetch(`/api/projects/${confirmDeleteProject.id}`, { method: "DELETE" });
       const data = await res.json();
       if (data.success) {
-        if (selectedProject?.id === proj.id) {
+        if (selectedProject?.id === confirmDeleteProject.id) {
           setSelectedProject(null);
         }
+        setConfirmDeleteProject(null);
         await fetchProjects();
+      } else {
+        alert(data.error || "Không thể xóa dự án");
       }
     } catch (err) {
       console.error(err);
+      alert("Lỗi khi xóa dự án!");
+    } finally {
+      setIsDeletingProject(false);
     }
   };
 
@@ -340,6 +351,7 @@ export default function DashboardClient({
     <div className="flex-1 flex overflow-hidden">
       {/* Left Sidebar */}
       <ProjectSidebar
+        userRole={currentUser?.role}
         projects={projects}
         selectedProject={selectedProject}
         onSelectProject={(p) => setSelectedProject(p)}
@@ -367,6 +379,7 @@ export default function DashboardClient({
       {/* Main Workspace Stage */}
       <main className="flex-1 flex flex-col p-5 overflow-hidden">
         <DashboardHeader
+          userRole={currentUser?.role}
           selectedProject={selectedProject}
           selectedModule={selectedModule}
           viewMode={viewMode}
@@ -441,6 +454,7 @@ export default function DashboardClient({
       {/* Modal Chi Tiết Case */}
       <CaseDetailModal
         testCase={selectedCase}
+        currentUser={currentUser}
         onClose={() => setSelectedCase(null)}
         onUpdate={(updated) => {
           setCases((prev) =>
@@ -499,6 +513,18 @@ export default function DashboardClient({
         nodeId={selectedStep?.id || selectedFlow?.nodes?.[0]?.id || "step-1"}
         onClose={() => setShowAddCaseModal(false)}
         onSuccess={(newCase) => setCases((prev) => [newCase, ...prev])}
+      />
+
+      {/* Modal xác thực an toàn Type-to-Confirm khi xóa dự án */}
+      <ConfirmDeleteModal
+        open={!!confirmDeleteProject}
+        title="Xác Nhận Xóa Mềm Dự Án"
+        description="Dự án và toàn bộ dữ liệu kiểm thử sẽ được chuyển sang trạng thái lưu trữ an toàn (Soft Delete). Chỉ Super Admin mới có quyền thực hiện thao tác này."
+        confirmTarget={confirmDeleteProject?.name || ""}
+        targetLabel="tên dự án"
+        isLoading={isDeletingProject}
+        onConfirm={handleExecuteDeleteProject}
+        onClose={() => setConfirmDeleteProject(null)}
       />
     </div>
   );

@@ -19,19 +19,19 @@ export async function GET(
        FROM era_tester_runs r
        JOIN era_tester_projects p ON p.id = r.project_id
        LEFT JOIN era_tester_users u ON u.id = r.created_by
-       WHERE r.id = $1`,
+       WHERE r.id = $1 AND (r.is_deleted IS NULL OR r.is_deleted = FALSE)`,
       [id]
     );
 
     if (runRes.rows.length === 0) {
-      return NextResponse.json({ error: "Không tìm thấy đợt test" }, { status: 404 });
+      return NextResponse.json({ error: "Không tìm thấy đợt test hoặc đã bị xóa" }, { status: 404 });
     }
 
     const casesRes = await query(
       `SELECT c.*, m.name as module_name
        FROM era_tester_cases c
        JOIN era_tester_modules m ON m.id = c.module_id
-       WHERE c.last_run_id = $1
+       WHERE c.last_run_id = $1 AND (c.is_deleted IS NULL OR c.is_deleted = FALSE)
        ORDER BY c.status ASC, c.id ASC`,
       [id]
     );
@@ -66,7 +66,8 @@ export async function PATCH(
       `SELECT COUNT(*)::int as total,
               COUNT(CASE WHEN status = 'CLOSED' THEN 1 END)::int as passed,
               COUNT(CASE WHEN status = 'NEW' THEN 1 END)::int as failed
-       FROM era_tester_cases WHERE last_run_id = $1`,
+       FROM era_tester_cases 
+       WHERE last_run_id = $1 AND (is_deleted IS NULL OR is_deleted = FALSE)`,
       [id]
     );
 
@@ -79,7 +80,7 @@ export async function PATCH(
            passed_cases = $3,
            failed_cases = $4,
            completed_at = CASE WHEN $1 = 'COMPLETED' THEN NOW() ELSE completed_at END
-       WHERE id = $5
+       WHERE id = $5 AND (is_deleted IS NULL OR is_deleted = FALSE)
        RETURNING *`,
       [nextStatus, stats.total, stats.passed, stats.failed, id]
     );
@@ -100,7 +101,17 @@ export async function DELETE(
     return NextResponse.json({ error: "Chưa xác thực" }, { status: 401 });
   }
 
+  if (user.role !== "SUPER_ADMIN") {
+    return NextResponse.json(
+      { error: "Chỉ Super Admin mới có quyền xóa đợt chạy test!" },
+      { status: 403 }
+    );
+  }
+
   const { id } = await params;
-  await query("DELETE FROM era_tester_runs WHERE id = $1", [id]);
-  return NextResponse.json({ success: true, message: "Đã xóa đợt test" });
+  await query(
+    "UPDATE era_tester_runs SET is_deleted = TRUE, deleted_at = NOW() WHERE id = $1",
+    [id]
+  );
+  return NextResponse.json({ success: true, message: "Đã xóa mềm đợt test thành công" });
 }

@@ -37,11 +37,14 @@ export interface TestCase {
   is_impacted_by_git?: boolean;
   assigned_to?: number | null;
   assigned_name?: string | null;
+  created_by?: number | null;
+  creator_name?: string | null;
   created_at?: string;
 }
 
 interface CaseDetailModalProps {
   testCase: TestCase | null;
+  currentUser?: any;
   onClose: () => void;
   onUpdate: (updated: TestCase) => void;
   onDelete?: (id: number) => void;
@@ -49,6 +52,7 @@ interface CaseDetailModalProps {
 
 export default function CaseDetailModal({
   testCase,
+  currentUser,
   onClose,
   onUpdate,
   onDelete,
@@ -78,6 +82,10 @@ export default function CaseDetailModal({
   }, []);
 
   if (!testCase || !formData) return null;
+
+  const isDev = currentUser?.role === "DEVELOPER";
+  const isSuperAdmin = currentUser?.role === "SUPER_ADMIN";
+  const canDelete = isSuperAdmin || (testCase.created_by && testCase.created_by === currentUser?.id);
 
   const handleClaimBug = async () => {
     setSaving(true);
@@ -204,10 +212,18 @@ export default function CaseDetailModal({
               <input
                 type="text"
                 value={formData.title}
+                disabled={isDev}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                className="text-lg font-bold text-slate-900 dark:text-white bg-transparent border-b border-transparent hover:border-slate-300 dark:hover:border-slate-700 focus:border-sky-500 focus:outline-none w-full transition-all pb-1"
+                className={`text-lg font-bold text-slate-900 dark:text-white bg-transparent border-b border-transparent hover:border-slate-300 dark:hover:border-slate-700 focus:border-sky-500 focus:outline-none w-full transition-all pb-1 ${
+                  isDev ? "opacity-75 cursor-not-allowed select-text" : ""
+                }`}
                 placeholder="Nhập tiêu đề kịch bản kiểm thử..."
               />
+              {isDev && (
+                <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1 font-sans">
+                  🔒 Lập trình viên không được sửa Tiêu đề, Input & Kết quả kỳ vọng của Tester
+                </p>
+              )}
             </div>
 
             <button
@@ -381,17 +397,25 @@ export default function CaseDetailModal({
           {activeTab === "scenario" && (
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                  Kết Quả Mong Đợi (Expected Result)
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center justify-between">
+                  <span>Kết Quả Mong Đợi (Expected Result)</span>
+                  {isDev && (
+                    <span className="text-[10px] text-amber-600 dark:text-amber-400 font-normal">
+                      🔒 Chỉ Tester & Super Admin mới được sửa
+                    </span>
+                  )}
                 </label>
                 <textarea
                   rows={3}
                   value={formData.expected_result || ""}
+                  disabled={isDev}
                   onChange={(e) =>
                     setFormData({ ...formData, expected_result: e.target.value })
                   }
                   placeholder="Mô tả hành vi mong muốn đạt được..."
-                  className="w-full p-3 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-2xl text-xs text-slate-900 dark:text-slate-200 focus:outline-none focus:border-sky-500 transition"
+                  className={`w-full p-3 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-2xl text-xs text-slate-900 dark:text-slate-200 focus:outline-none focus:border-sky-500 transition ${
+                    isDev ? "opacity-75 cursor-not-allowed select-text" : ""
+                  }`}
                 />
               </div>
 
@@ -415,28 +439,44 @@ export default function CaseDetailModal({
           {activeTab === "io" && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                  Dữ Liệu Đầu Vào (Input Data / Parameters)
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center justify-between">
+                  <span>Dữ Liệu Đầu Vào (Input Data)</span>
+                  {isDev && (
+                    <span className="text-[10px] text-amber-600 dark:text-amber-400 font-normal">
+                      🔒 Đề bài cố định
+                    </span>
+                  )}
                 </label>
                 <textarea
                   rows={6}
                   value={formData.input_data || ""}
+                  disabled={isDev}
                   onChange={(e) => setFormData({ ...formData, input_data: e.target.value })}
                   placeholder="VD: { email: 'ten.ho@eragroup.com.vn', role: 'admin' }"
-                  className="w-full p-3 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-2xl text-xs font-mono text-slate-900 dark:text-slate-200 focus:outline-none focus:border-sky-500 transition"
+                  className={`w-full p-3 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-2xl text-xs font-mono text-slate-900 dark:text-slate-200 focus:outline-none focus:border-sky-500 transition ${
+                    isDev ? "opacity-75 cursor-not-allowed select-text" : ""
+                  }`}
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                  Dữ Liệu Đầu Ra (Output Data)
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center justify-between">
+                  <span>Dữ Liệu Đầu Ra (Output Data)</span>
+                  {isDev && (
+                    <span className="text-[10px] text-amber-600 dark:text-amber-400 font-normal">
+                      🔒 Đề bài cố định
+                    </span>
+                  )}
                 </label>
                 <textarea
                   rows={6}
                   value={formData.output_data || ""}
+                  disabled={isDev}
                   onChange={(e) => setFormData({ ...formData, output_data: e.target.value })}
                   placeholder="VD: HTTP 200 OK kèm thông tin hồ sơ người dùng"
-                  className="w-full p-3 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-2xl text-xs font-mono text-slate-900 dark:text-slate-200 focus:outline-none focus:border-sky-500 transition"
+                  className={`w-full p-3 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-2xl text-xs font-mono text-slate-900 dark:text-slate-200 focus:outline-none focus:border-sky-500 transition ${
+                    isDev ? "opacity-75 cursor-not-allowed select-text" : ""
+                  }`}
                 />
               </div>
             </div>
@@ -514,17 +554,24 @@ export default function CaseDetailModal({
 
           {activeTab === "history" && (
             <div className="pt-2">
-              <CaseHistoryTimeline caseId={formData.id} />
+              <CaseHistoryTimeline
+                caseId={formData.id}
+                userRole={currentUser?.role}
+                onRollbackSuccess={(restoredCase) => {
+                  setFormData(restoredCase);
+                  onUpdate(restoredCase);
+                }}
+              />
             </div>
           )}
         </div>
 
         {/* Modal Actions Footer */}
         <div className="p-4 px-6 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/90 flex items-center justify-between">
-          {onDelete ? (
+          {onDelete && canDelete ? (
             <button
               onClick={() => {
-                if (confirm("Bạn có chắc chắn muốn xóa kịch bản này?")) {
+                if (confirm("Bạn có chắc chắn muốn xóa mềm kịch bản này? Dữ liệu vẫn được bảo lưu an toàn trong hệ thống.")) {
                   onDelete(formData.id);
                   onClose();
                 }

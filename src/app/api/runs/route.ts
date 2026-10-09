@@ -23,14 +23,15 @@ export async function GET(req: NextRequest) {
              COUNT(DISTINCT CASE WHEN c.status = 'NEW' THEN c.id END) as failed_cases_count,
              COUNT(DISTINCT CASE WHEN c.status IN ('FIX', 'VERIFY') THEN c.id END) as fixing_cases_count
       FROM era_tester_runs r
-      JOIN era_tester_projects p ON p.id = r.project_id
+      JOIN era_tester_projects p ON p.id = r.project_id AND (p.is_deleted IS NULL OR p.is_deleted = FALSE)
       LEFT JOIN era_tester_users u ON u.id = r.created_by
-      LEFT JOIN era_tester_cases c ON c.last_run_id = r.id
+      LEFT JOIN era_tester_cases c ON c.last_run_id = r.id AND (c.is_deleted IS NULL OR c.is_deleted = FALSE)
+      WHERE (r.is_deleted IS NULL OR r.is_deleted = FALSE)
     `;
     const params: any[] = [];
 
     if (projectId) {
-      sql += ` WHERE r.project_id = $1`;
+      sql += ` AND r.project_id = $1`;
       params.push(projectId);
     }
 

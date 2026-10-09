@@ -31,15 +31,17 @@ export async function GET(req: NextRequest) {
            ) AS assigned_tester_users
     FROM era_tester_modules m
     JOIN era_tester_projects p ON p.id = m.project_id
-    LEFT JOIN era_tester_cases c ON c.module_id = m.id
+    LEFT JOIN era_tester_cases c ON c.module_id = m.id AND (c.is_deleted IS NULL OR c.is_deleted = FALSE)
+    WHERE (m.is_deleted IS NULL OR m.is_deleted = FALSE) 
+      AND (p.is_deleted IS NULL OR p.is_deleted = FALSE)
   `;
   const params: any[] = [];
 
   if (projectId) {
-    sql += ` WHERE m.project_id = $1`;
+    sql += ` AND m.project_id = $1`;
     params.push(projectId);
   } else if (projectSlug) {
-    sql += ` WHERE p.slug = $1`;
+    sql += ` AND p.slug = $1`;
     params.push(projectSlug);
   }
 
@@ -55,10 +57,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Chưa xác thực" }, { status: 401 });
   }
 
+  if (user.role === "DEVELOPER") {
+    return NextResponse.json(
+      { error: "Lập trình viên không có quyền tạo nhóm kiểm thử mới." },
+      { status: 403 }
+    );
+  }
+
   const { projectId, name, filePatterns, assignedTesters = [] } = await req.json();
 
-  if (!projectId || !name) {
-    return NextResponse.json({ error: "Thiếu projectId hoặc tên nhóm test" }, { status: 400 });
+  if (!projectId || !name || name.trim().length < 2) {
+    return NextResponse.json(
+      { error: "Thiếu projectId hoặc tên nhóm kiểm thử (ít nhất 2 ký tự)" },
+      { status: 400 }
+    );
   }
 
   const patterns = Array.isArray(filePatterns)

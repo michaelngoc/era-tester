@@ -12,7 +12,10 @@ export async function GET(
   }
 
   const { id } = await params;
-  const res = await query("SELECT * FROM era_tester_flows WHERE id = $1", [id]);
+  const res = await query(
+    "SELECT * FROM era_tester_flows WHERE id = $1 AND (is_deleted IS NULL OR is_deleted = FALSE)",
+    [id]
+  );
 
   if (res.rows.length === 0) {
     return NextResponse.json({ error: "Không tìm thấy sơ đồ" }, { status: 404 });
@@ -30,8 +33,22 @@ export async function PUT(
     return NextResponse.json({ error: "Chưa xác thực" }, { status: 401 });
   }
 
+  if (user.role === "DEVELOPER") {
+    return NextResponse.json(
+      { error: "Lập trình viên không có quyền chỉnh sửa cấu trúc User Flow kiểm thử!" },
+      { status: 403 }
+    );
+  }
+
   const { id } = await params;
   const { nodes, edges, title } = await req.json();
+
+  if (title !== undefined && (typeof title !== "string" || title.trim().length < 2)) {
+    return NextResponse.json(
+      { error: "Tiêu đề User Flow phải có ít nhất 2 ký tự!" },
+      { status: 400 }
+    );
+  }
 
   const res = await query(
     `UPDATE era_tester_flows 
@@ -39,10 +56,14 @@ export async function PUT(
          edges = COALESCE($2::jsonb, edges),
          title = COALESCE($3, title),
          updated_at = NOW()
-     WHERE id = $4
+     WHERE id = $4 AND (is_deleted IS NULL OR is_deleted = FALSE)
      RETURNING *`,
-    [nodes ? JSON.stringify(nodes) : null, edges ? JSON.stringify(edges) : null, title, id]
+    [nodes ? JSON.stringify(nodes) : null, edges ? JSON.stringify(edges) : null, title ? title.trim() : null, id]
   );
+
+  if (res.rows.length === 0) {
+    return NextResponse.json({ error: "Không tìm thấy sơ đồ hoặc đã bị xóa" }, { status: 404 });
+  }
 
   return NextResponse.json({ success: true, flow: res.rows[0] });
 }
@@ -56,8 +77,19 @@ export async function DELETE(
     return NextResponse.json({ error: "Chưa xác thực" }, { status: 401 });
   }
 
-  const { id } = await params;
-  await query("DELETE FROM era_tester_flows WHERE id = $1", [id]);
+  if (user.role !== "SUPER_ADMIN") {
+    return NextResponse.json(
+      { error: "Chỉ Super Admin mới có quyền xóa User Flow!" },
+      { status: 403 }
+    );
+  }
 
-  return NextResponse.json({ success: true, message: "Đã xóa User Flow thành công" });
+  const { id } = await params;
+  await query(
+    "UPDATE era_tester_flows SET is_deleted = TRUE, deleted_at = NOW() WHERE id = $1",
+    [id]
+  );
+
+  return NextResponse.json({ success: true, message: "Đã xóa mềm User Flow thành công" });
 }
+

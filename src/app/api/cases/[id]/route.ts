@@ -25,15 +25,67 @@ export async function PATCH(
      FROM era_tester_cases c
      JOIN era_tester_modules m ON m.id = c.module_id
      LEFT JOIN era_tester_users u ON u.id = c.created_by
-     WHERE c.id = $1`,
+     WHERE c.id = $1 AND (c.is_deleted IS NULL OR c.is_deleted = FALSE)`,
     [id]
   );
 
   if (currentCaseRes.rows.length === 0) {
-    return NextResponse.json({ error: "Không tìm thấy test case" }, { status: 404 });
+    return NextResponse.json({ error: "Không tìm thấy test case hoặc đã bị xóa" }, { status: 404 });
   }
 
   const prev = currentCaseRes.rows[0];
+
+  // RBAC & Guardrail: Chống phá hoại và xóa trắng nội dung
+  const isDev = user.role === "DEVELOPER";
+  const incomingTitle = body.title !== undefined ? body.title : undefined;
+  const incomingInput = (body.inputData ?? body.input_data) !== undefined ? (body.inputData ?? body.input_data) : undefined;
+  const incomingExpected = (body.expectedResult ?? body.expected_result) !== undefined ? (body.expectedResult ?? body.expected_result) : undefined;
+
+  // Lập trình viên không được sửa tiêu đề, kết quả kỳ vọng, input data do Tester đặt ra
+  if (isDev) {
+    const isChangingTitle = incomingTitle !== undefined && incomingTitle.trim() !== prev.title;
+    const isChangingInput = incomingInput !== undefined && incomingInput.trim() !== (prev.input_data || "").trim();
+    const isChangingExpected = incomingExpected !== undefined && incomingExpected.trim() !== (prev.expected_result || "").trim();
+
+    if (isChangingTitle || isChangingInput || isChangingExpected) {
+      return NextResponse.json(
+        { error: "Lập trình viên không có quyền chỉnh sửa Tiêu đề, Dữ liệu đầu vào hoặc Kết quả kỳ vọng của Tester!" },
+        { status: 403 }
+      );
+    }
+  }
+
+  // Chặn xóa trắng hoặc điền chuỗi quá ngắn
+  if (incomingTitle !== undefined) {
+    if (typeof incomingTitle !== "string" || incomingTitle.trim().length < 3) {
+      return NextResponse.json(
+        { error: "Tiêu đề kịch bản không được để trống và phải có ít nhất 3 ký tự!" },
+        { status: 400 }
+      );
+    }
+  }
+
+  if (incomingExpected !== undefined) {
+    if (typeof incomingExpected !== "string" || incomingExpected.trim().length === 0) {
+      return NextResponse.json(
+        { error: "Kết quả kỳ vọng (Expected Result) không được để trống!" },
+        { status: 400 }
+      );
+    }
+  }
+
+  // Chụp Snapshot phiên bản hiện tại trước khi update để phục vụ 1-Click Rollback
+  const oldSnapshot = {
+    title: prev.title,
+    input_data: prev.input_data,
+    output_data: prev.output_data,
+    expected_result: prev.expected_result,
+    actual_result: prev.actual_result,
+    status: prev.status,
+    priority: prev.priority,
+    assigned_to: prev.assigned_to,
+    saved_at: new Date().toISOString(),
+  };
 
   // Xử lý các action nhận task đặc biệt
   let assignedTo = body.assignedTo ?? body.assigned_to;
@@ -64,13 +116,13 @@ export async function PATCH(
          assigned_to = COALESCE($9, assigned_to),
          is_impacted_by_git = CASE WHEN $10::boolean THEN FALSE ELSE is_impacted_by_git END,
          updated_at = NOW()
-     WHERE id = $11
+     WHERE id = $11 AND (is_deleted IS NULL OR is_deleted = FALSE)
      RETURNING *`,
     [
-      body.title,
-      body.inputData ?? body.input_data,
+      incomingTitle ? incomingTitle.trim() : null,
+      incomingInput !== undefined ? incomingInput : null,
       body.outputData ?? body.output_data,
-      body.expectedResult ?? body.expected_result,
+      incomingExpected ? incomingExpected.trim() : null,
       body.actualResult ?? body.actual_result,
       body.responsePayload ?? body.response_payload,
       newStatus,
@@ -83,24 +135,31 @@ export async function PATCH(
 
   const updatedCase = updateRes.rows[0];
 
-  // Ghi nhận Audit Log vào bảng era_tester_case_history nếu có đổi status hoặc action đặc biệt
-  if (prev.status !== newStatus || body.action || body.note) {
+  const hasContentChange =
+    (incomingTitle !== undefined && incomingTitle.trim() !== prev.title) ||
+    (incomingExpected !== undefined && incomingExpected.trim() !== (prev.expected_result || "").trim()) ||
+    (incomingInput !== undefined && incomingInput !== prev.input_data) ||
+    ((body.actualResult ?? body.actual_result) !== undefined && (body.actualResult ?? body.actual_result) !== prev.actual_result);
+
+  // Ghi nhận Audit Log vào bảng era_tester_case_history kèm bản chụp Snapshot
+  if (prev.status !== newStatus || body.action || body.note || hasContentChange) {
     try {
       await query(
         `INSERT INTO era_tester_case_history 
-         (case_id, run_id, actor_id, actor_name, action, from_status, to_status, note, evidence_urls, response_payload)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+         (case_id, run_id, actor_id, actor_name, action, from_status, to_status, note, evidence_urls, response_payload, old_snapshot)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb)`,
         [
           id,
           updatedCase.last_run_id || null,
           user.id,
           user.fullName || user.email,
-          actionName,
+          actionName === "STATUS_CHANGE" && hasContentChange && prev.status === newStatus ? "CONTENT_UPDATE" : actionName,
           prev.status,
           newStatus,
-          body.note || (body.action === "claim_bug" ? "Dev đã nhận xử lý bug" : null),
+          body.note || (body.action === "claim_bug" ? "Dev đã nhận xử lý bug" : hasContentChange ? "Cập nhật nội dung kịch bản kiểm thử" : null),
           body.evidenceUrls || body.evidence_urls || null,
           body.responsePayload ? JSON.stringify(body.responsePayload) : null,
+          JSON.stringify(oldSnapshot),
         ]
       );
     } catch (e) {
@@ -192,6 +251,29 @@ export async function DELETE(
   }
 
   const { id } = await params;
-  await query("DELETE FROM era_tester_cases WHERE id = $1", [id]);
-  return NextResponse.json({ success: true, message: "Đã xóa test case" });
+
+  const caseRes = await query(
+    "SELECT id, created_by, title FROM era_tester_cases WHERE id = $1 AND (is_deleted IS NULL OR is_deleted = FALSE)",
+    [id]
+  );
+
+  if (caseRes.rows.length === 0) {
+    return NextResponse.json({ error: "Không tìm thấy test case hoặc đã bị xóa" }, { status: 404 });
+  }
+
+  const existingCase = caseRes.rows[0];
+
+  if (user.role !== "SUPER_ADMIN" && existingCase.created_by !== user.id) {
+    return NextResponse.json(
+      { error: "Chỉ Super Admin hoặc người tạo mới có quyền xóa kịch bản kiểm thử này!" },
+      { status: 403 }
+    );
+  }
+
+  await query(
+    "UPDATE era_tester_cases SET is_deleted = TRUE, deleted_at = NOW() WHERE id = $1",
+    [id]
+  );
+
+  return NextResponse.json({ success: true, message: "Đã xóa mềm test case thành công" });
 }

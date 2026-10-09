@@ -11,8 +11,23 @@ export async function PATCH(
     return NextResponse.json({ error: "Chưa xác thực" }, { status: 401 });
   }
 
+  // Developer không được sửa thông tin dự án
+  if (user.role === "DEVELOPER") {
+    return NextResponse.json(
+      { error: "Lập trình viên không có quyền chỉnh sửa dự án." },
+      { status: 403 }
+    );
+  }
+
   const { id } = await params;
   const { name, slug, description, githubRepo } = await req.json();
+
+  if (name !== undefined && name.trim().length < 2) {
+    return NextResponse.json(
+      { error: "Tên dự án không được để trống hoặc dưới 2 ký tự." },
+      { status: 400 }
+    );
+  }
 
   const cleanSlug = slug ? slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-") : undefined;
 
@@ -22,20 +37,20 @@ export async function PATCH(
          slug = COALESCE($2, slug),
          description = COALESCE($3, description),
          github_repo = COALESCE($4, github_repo)
-     WHERE id = $5
+     WHERE id = $5 AND (is_deleted IS NULL OR is_deleted = FALSE)
      RETURNING *`,
     [name?.trim(), cleanSlug, description, githubRepo?.trim(), id]
   );
 
   if (res.rows.length === 0) {
-    return NextResponse.json({ error: "Không tìm thấy dự án" }, { status: 404 });
+    return NextResponse.json({ error: "Không tìm thấy dự án hoặc dự án đã bị xóa" }, { status: 404 });
   }
 
   return NextResponse.json({ success: true, project: res.rows[0] });
 }
 
 export async function DELETE(
-  req: NextRequest,
+  _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const user = await getCurrentUser();
@@ -43,8 +58,23 @@ export async function DELETE(
     return NextResponse.json({ error: "Chưa xác thực" }, { status: 401 });
   }
 
-  const { id } = await params;
-  await query("DELETE FROM era_tester_projects WHERE id = $1", [id]);
+  // CHỈ SUPER ADMIN MỚI CÓ QUYỀN XÓA DỰ ÁN
+  if (user.role !== "SUPER_ADMIN") {
+    return NextResponse.json(
+      { error: "BỊ CHẶN: Chỉ Quản Trị Tối Cao (Super Admin) mới có quyền xóa dự án!" },
+      { status: 403 }
+    );
+  }
 
-  return NextResponse.json({ success: true, message: "Đã xóa dự án thành công" });
+  const { id } = await params;
+
+  // Áp dụng XÓA MỀM (Soft Delete) để bảo toàn dữ liệu vĩnh viễn
+  await query(
+    `UPDATE era_tester_projects 
+     SET is_deleted = TRUE, deleted_at = NOW() 
+     WHERE id = $1`,
+    [id]
+  );
+
+  return NextResponse.json({ success: true, message: "Đã chuyển dự án vào kho lưu trữ (Xóa mềm an toàn)" });
 }

@@ -21,8 +21,8 @@ export async function GET(req: NextRequest) {
             COUNT(CASE WHEN c.status = 'NEW' THEN 1 END) AS count_new,
             COUNT(CASE WHEN c.status = 'CLOSED' THEN 1 END) AS count_closed
      FROM era_tester_flows f
-     LEFT JOIN era_tester_cases c ON c.flow_id = f.id
-     WHERE f.module_id = $1
+     LEFT JOIN era_tester_cases c ON c.flow_id = f.id AND (c.is_deleted IS NULL OR c.is_deleted = FALSE)
+     WHERE f.module_id = $1 AND (f.is_deleted IS NULL OR f.is_deleted = FALSE)
      GROUP BY f.id
      ORDER BY f.id ASC`,
     [moduleId]
@@ -37,10 +37,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Chưa xác thực" }, { status: 401 });
   }
 
+  if (user.role === "DEVELOPER") {
+    return NextResponse.json(
+      { error: "Lập trình viên không có quyền tạo User Flow kiểm thử!" },
+      { status: 403 }
+    );
+  }
+
   const { moduleId, title, templateType = "custom" } = await req.json();
 
-  if (!moduleId || !title) {
-    return NextResponse.json({ error: "Thiếu moduleId hoặc tiêu đề User Flow" }, { status: 400 });
+  if (!moduleId || !title || typeof title !== "string" || title.trim().length < 2) {
+    return NextResponse.json({ error: "Tiêu đề User Flow phải có ít nhất 2 ký tự" }, { status: 400 });
   }
 
   let initialNodes: any[] = [];
