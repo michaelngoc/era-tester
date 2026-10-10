@@ -271,13 +271,17 @@ export default function DashboardClient({
     }
   };
 
-  const handleSaveFlowLayout = async (nodes: any[], edges: any[]) => {
+  const handleSaveFlowLayout = async (
+    nodes: any[],
+    edges: any[],
+    nodeRemap?: Record<string, string>
+  ) => {
     if (!selectedFlow?.id) return;
     try {
       const res = await fetch(`/api/flows/${selectedFlow.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nodes, edges }),
+        body: JSON.stringify({ nodes, edges, nodeRemap }),
       });
       const data = await res.json();
       if (!res.ok || data.error) {
@@ -288,6 +292,16 @@ export default function DashboardClient({
       setFlows((prev) =>
         prev.map((f) => (f.id === selectedFlow.id ? { ...f, nodes, edges } : f))
       );
+      if (nodeRemap && Object.keys(nodeRemap).length > 0) {
+        setCases((prev) =>
+          prev.map((c) => {
+            if (c.node_id && nodeRemap[c.node_id]) {
+              return { ...c, node_id: nodeRemap[c.node_id] };
+            }
+            return c;
+          })
+        );
+      }
     } catch (err: any) {
       console.error("Lỗi lưu sơ đồ:", err);
       toast.error("Lỗi kết nối khi lưu sơ đồ: " + err.message);
@@ -304,20 +318,26 @@ export default function DashboardClient({
       (a: any, b: any) => (a.position?.x ?? 0) - (b.position?.x ?? 0)
     );
 
-    // Renumber remaining nodes sequentially (Bước 1, Bước 2, Bước 3...)
+    // Renumber remaining nodes sequentially (step-1, step-2, step-3...)
+    const nodeRemap: Record<string, string> = {};
     const reindexedNodes = sorted.map((node: any, idx: number) => {
       const stepNum = idx + 1;
+      const newId = `step-${stepNum}`;
+      nodeRemap[node.id] = newId;
+
       let rawTitle = node.data?.title || `Bước ${stepNum}`;
       rawTitle = rawTitle.replace(/^(Bước|Step)\s*\d+\s*[:\-]\s*/i, "").trim();
       if (!rawTitle) rawTitle = `Bước ${stepNum}`;
       return {
         ...node,
+        id: newId,
         position: {
           x: idx * 320 + 60,
           y: node.position?.y ?? 120,
         },
         data: {
           ...node.data,
+          stepId: newId,
           title: `Bước ${stepNum}: ${rawTitle}`,
         },
       };
@@ -340,7 +360,7 @@ export default function DashboardClient({
       });
     }
 
-    await handleSaveFlowLayout(reindexedNodes, reindexedEdges);
+    await handleSaveFlowLayout(reindexedNodes, reindexedEdges, nodeRemap);
     setSelectedStep(null);
     toast.success("Đã xóa bước và tự động đánh lại số thứ tự sơ đồ!");
   };

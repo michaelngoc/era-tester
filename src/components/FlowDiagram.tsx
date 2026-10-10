@@ -36,13 +36,17 @@ interface FlowDiagramProps {
   flowNodes?: any[];
   flowEdges?: any[];
   onSelectStep: (step: { id: string; title: string; description?: string }) => void;
-  onSaveFlow?: (nodes: Node[], edges: Edge[]) => void;
+  onSaveFlow?: (nodes: Node[], edges: Edge[], nodeRemap?: Record<string, string>) => void;
   onAddStep?: (stepTitle: string) => void;
 }
 
 // Custom Node Component hiển thị Bước và số lượng Checklist bên trong
 function TestStepNode({ data }: { data: any }) {
   const { title, description, stepId, stepCases, onSelect } = data;
+
+  // Derive step badge from title (e.g. "Bước 1: ...", "Step 2: ...") so badge matches title 100%
+  const stepMatch = title?.match(/^(?:Bước|Step)\s*(\d+)/i);
+  const displayStepBadge = stepMatch ? `step-${stepMatch[1]}` : (stepId || "step-1");
 
   const cases: TestCase[] = stepCases || [];
   const total = cases.length;
@@ -118,7 +122,7 @@ function TestStepNode({ data }: { data: any }) {
       {/* Header bar: ID + Status + Git Alert */}
       <div className="flex items-center justify-between mb-2">
         <span className="text-[10px] font-mono font-bold text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
-          {stepId}
+          {displayStepBadge}
         </span>
 
         <div className="flex items-center gap-1.5">
@@ -302,20 +306,26 @@ export default function FlowDiagram({
   const handleReindexSteps = useCallback(() => {
     if (nodes.length === 0) return;
     const sorted = [...nodes].sort((a, b) => (a.position?.x ?? 0) - (b.position?.x ?? 0));
+    const nodeRemap: Record<string, string> = {};
     const reindexedNodes = sorted.map((node, idx) => {
       const stepNum = idx + 1;
+      const newId = `step-${stepNum}`;
+      nodeRemap[node.id] = newId;
+
       const nodeData = (node.data || {}) as Record<string, any>;
       let rawTitle = String(nodeData.title || `Bước ${stepNum}`);
       rawTitle = rawTitle.replace(/^(Bước|Step)\s*\d+\s*[:\-]\s*/i, "").trim();
       if (!rawTitle) rawTitle = `Bước ${stepNum}`;
       return {
         ...node,
+        id: newId,
         position: {
           x: idx * 320 + 60,
           y: node.position?.y ?? 120,
         },
         data: {
           ...nodeData,
+          stepId: newId,
           title: `Bước ${stepNum}: ${rawTitle}`,
         },
       };
@@ -339,25 +349,20 @@ export default function FlowDiagram({
 
     setNodes(reindexedNodes);
     setEdges(reindexedEdges);
-    if (onSaveFlow) onSaveFlow(reindexedNodes, reindexedEdges);
+    if (onSaveFlow) onSaveFlow(reindexedNodes, reindexedEdges, nodeRemap);
   }, [nodes, onSaveFlow, setNodes, setEdges]);
 
   const handleAddStepSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newStepTitle.trim()) return;
 
-    // Generate collision-safe unique ID
-    const existingIds = new Set(nodes.map((n) => n.id));
-    let nextNum = nodes.length + 1;
-    while (existingIds.has(`step-${nextNum}`)) {
-      nextNum++;
-    }
-    const nextId = `step-${nextNum}`;
+    const nextStepNum = nodes.length + 1;
+    const nextId = `step-${nextStepNum}`;
 
     // Clean title and ensure "Bước X: ..." format
     let cleanTitle = newStepTitle.trim().replace(/^(Bước|Step)\s*\d+\s*[:\-]\s*/i, "").trim();
     if (!cleanTitle) cleanTitle = newStepTitle.trim();
-    const formattedTitle = `Bước ${nodes.length + 1}: ${cleanTitle}`;
+    const formattedTitle = `Bước ${nextStepNum}: ${cleanTitle}`;
 
     // Place to the right of the rightmost node
     const maxPosX = nodes.reduce((max, n) => Math.max(max, n.position?.x ?? 0), 0);
@@ -454,7 +459,7 @@ export default function FlowDiagram({
         fitView
         proOptions={{ hideAttribution: true }}
       >
-        <Controls className="!bg-white/90 dark:!bg-slate-900/90 !border-slate-200 dark:!border-slate-800/80 !text-slate-800 dark:!text-white rounded-2xl !backdrop-blur-md shadow-2xl" />
+        <Controls className="rounded-2xl" />
         <MiniMap
           nodeColor="#38bdf8"
           maskColor={theme === "dark" ? "rgba(9, 13, 22, 0.75)" : "rgba(241, 245, 249, 0.75)"}

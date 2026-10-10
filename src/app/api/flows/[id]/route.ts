@@ -41,13 +41,25 @@ export async function PUT(
   }
 
   const { id } = await params;
-  const { nodes, edges, title } = await req.json();
+  const { nodes, edges, title, nodeRemap } = await req.json();
 
   if (title !== undefined && (typeof title !== "string" || title.trim().length < 2)) {
     return NextResponse.json(
       { error: "Tiêu đề User Flow phải có ít nhất 2 ký tự!" },
       { status: 400 }
     );
+  }
+
+  // If nodeRemap is provided (e.g. { "step-3": "step-1", "step-2": "step-2" }), update related test cases
+  if (nodeRemap && typeof nodeRemap === "object") {
+    for (const [oldNodeId, newNodeId] of Object.entries(nodeRemap)) {
+      if (oldNodeId && newNodeId && oldNodeId !== newNodeId) {
+        await query(
+          "UPDATE era_tester_cases SET node_id = $1 WHERE flow_id = $2 AND node_id = $3",
+          [newNodeId, id, oldNodeId]
+        );
+      }
+    }
   }
 
   const res = await query(

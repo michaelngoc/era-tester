@@ -221,7 +221,10 @@ export default function StepChecklistDrawer({
           <div className="flex-1 mr-4">
             <div className="flex items-center gap-2 mb-1.5">
               <span className="text-[11px] font-mono font-bold text-sky-600 dark:text-sky-400 px-2.5 py-0.5 rounded-lg bg-sky-50 dark:bg-sky-500/10 border border-sky-200 dark:border-sky-500/20">
-                {step.id}
+                {(() => {
+                  const m = step.title?.match(/^(?:Bước|Step)\s*(\d+)/i);
+                  return m ? `step-${m[1]}` : step.id;
+                })()}
               </span>
               <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Chi Tiết Bước & Danh Sách Kịch Bản</span>
             </div>

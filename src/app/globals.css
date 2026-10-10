@@ -43,3 +43,68 @@
   display: none !important;
 }
 
+/* React Flow Controls & MiniMap Dark / Light Theme */
+.react-flow__controls {
+  border-radius: 1rem !important;
+  overflow: hidden !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08) !important;
+  background-color: #ffffff !important;
+}
+
+.react-flow__controls-button {
+  background-color: #ffffff !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+  fill: #475569 !important;
+  color: #475569 !important;
+  transition: all 0.15s ease !important;
+}
+
+.react-flow__controls-button:last-child {
+  border-bottom: none !important;
+}
+
+.react-flow__controls-button:hover {
+  background-color: #f8fafc !important;
+  fill: #0284c7 !important;
+  color: #0284c7 !important;
+}
+
+.react-flow__controls-button svg {
+  fill: currentColor !important;
+}
+
+/* React Flow Dark Mode */
+.dark .react-flow__controls {
+  background-color: #0f172a !important;
+  border: 1px solid #1e293b !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5) !important;
+}
+
+.dark .react-flow__controls-button {
+  background-color: #0f172a !important;
+  border-bottom: 1px solid #1e293b !important;
+  fill: #94a3b8 !important;
+  color: #94a3b8 !important;
+}
+
+.dark .react-flow__controls-button:hover {
+  background-color: #1e293b !important;
+  fill: #38bdf8 !important;
+  color: #38bdf8 !important;
+}
+
+.dark .react-flow__controls-button svg {
+  fill: currentColor !important;
+}
+
+.react-flow__minimap {
+  border-radius: 1rem !important;
+  overflow: hidden !important;
+}
+
+.dark .react-flow__minimap {
+  background-color: #0f172a !important;
+  border: 1px solid #1e293b !important;
+}
+
