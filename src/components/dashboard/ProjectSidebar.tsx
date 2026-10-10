@@ -1,7 +1,18 @@
-"use client";
-
 import React from "react";
-import { FolderGit2, Layers, Plus, Pencil, Trash2, Users } from "lucide-react";
+import {
+  FolderGit2,
+  Layers,
+  Plus,
+  Pencil,
+  Trash2,
+  Users,
+  Search,
+  X,
+  GripVertical,
+  ChevronUp,
+  ChevronDown,
+  GitFork,
+} from "lucide-react";
 
 export interface ProjectSidebarProps {
   userRole?: string;
@@ -19,6 +30,7 @@ export interface ProjectSidebarProps {
   onOpenCreateModule: () => void;
   onOpenEditModule: (mod: any, e: React.MouseEvent) => void;
   onDeleteModule: (mod: any, e: React.MouseEvent) => void;
+  onReorderModules?: (orderedModules: any[]) => void;
 }
 
 export function ProjectSidebar({
@@ -36,9 +48,100 @@ export function ProjectSidebar({
   onOpenCreateModule,
   onOpenEditModule,
   onDeleteModule,
+  onReorderModules,
 }: ProjectSidebarProps) {
   const isSuperAdmin = userRole === "SUPER_ADMIN";
   const isDev = userRole === "DEVELOPER";
+  const [moduleSearch, setModuleSearch] = React.useState("");
+
+  // Drag and drop state
+  const [draggedId, setDraggedId] = React.useState<number | null>(null);
+  const [dragOverId, setDragOverId] = React.useState<number | null>(null);
+
+  const filteredModules = React.useMemo(() => {
+    if (!moduleSearch.trim()) return modules;
+    const q = moduleSearch.toLowerCase().trim();
+    return modules.filter((m) => {
+      const matchName = m.name?.toLowerCase().includes(q);
+      const matchPatterns = Array.isArray(m.file_patterns)
+        ? m.file_patterns.some((p: string) => p.toLowerCase().includes(q))
+        : false;
+      const matchTesters = Array.isArray(m.assigned_tester_users)
+        ? m.assigned_tester_users.some(
+            (u: any) =>
+              u.name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q)
+          )
+        : false;
+      const matchFlows = Array.isArray(m.flows)
+        ? m.flows.some((f: any) => f.title?.toLowerCase().includes(q))
+        : false;
+      return matchName || matchPatterns || matchTesters || matchFlows;
+    });
+  }, [modules, moduleSearch]);
+
+  // Reorder handlers
+  const handleMoveUp = (id: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const currentIndex = modules.findIndex((m) => m.id === id);
+    if (currentIndex <= 0) return;
+    const newItems = [...modules];
+    const temp = newItems[currentIndex];
+    newItems[currentIndex] = newItems[currentIndex - 1];
+    newItems[currentIndex - 1] = temp;
+    if (onReorderModules) onReorderModules(newItems);
+  };
+
+  const handleMoveDown = (id: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const currentIndex = modules.findIndex((m) => m.id === id);
+    if (currentIndex < 0 || currentIndex >= modules.length - 1) return;
+    const newItems = [...modules];
+    const temp = newItems[currentIndex];
+    newItems[currentIndex] = newItems[currentIndex + 1];
+    newItems[currentIndex + 1] = temp;
+    if (onReorderModules) onReorderModules(newItems);
+  };
+
+  const handleDragStart = (e: React.DragEvent, id: number) => {
+    if (isDev || moduleSearch.trim()) return;
+    e.dataTransfer.setData("text/plain", String(id));
+    e.dataTransfer.effectAllowed = "move";
+    setDraggedId(id);
+  };
+
+  const handleDragOver = (e: React.DragEvent, id: number) => {
+    if (isDev || moduleSearch.trim()) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (dragOverId !== id) {
+      setDragOverId(id);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent, targetId: number) => {
+    if (isDev || moduleSearch.trim()) return;
+    e.preventDefault();
+    if (draggedId === null || draggedId === targetId) {
+      setDraggedId(null);
+      setDragOverId(null);
+      return;
+    }
+    const fromIdx = modules.findIndex((m) => m.id === draggedId);
+    const toIdx = modules.findIndex((m) => m.id === targetId);
+    if (fromIdx !== -1 && toIdx !== -1) {
+      const newItems = [...modules];
+      const [moved] = newItems.splice(fromIdx, 1);
+      newItems.splice(toIdx, 0, moved);
+      if (onReorderModules) onReorderModules(newItems);
+    }
+    setDraggedId(null);
+    setDragOverId(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedId(null);
+    setDragOverId(null);
+  };
 
   return (
     <aside className="w-80 bg-white/80 dark:bg-slate-900/60 backdrop-blur-xl border-r border-slate-200 dark:border-slate-800/80 flex flex-col shrink-0 transition-colors duration-150">
@@ -137,10 +240,16 @@ export function ProjectSidebar({
 
       {/* Modules List Section */}
       <div className="flex-1 p-4 overflow-y-auto">
-        <div className="flex items-center justify-between mb-2.5">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            Nhóm Kiểm Thử (Modules)
-          </span>
+        {/* Header Nhóm Kiểm Thử */}
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Nhóm Kiểm Thử (Modules)
+            </span>
+            <span className="text-[10px] font-mono font-bold text-slate-400 dark:text-slate-500 px-1.5 py-0.2 rounded-md bg-slate-100 dark:bg-slate-800">
+              {modules.length}
+            </span>
+          </div>
 
           {!isDev && (
             <button
@@ -155,20 +264,71 @@ export function ProjectSidebar({
           )}
         </div>
 
+        {/* Search Bar for Modules */}
+        {modules.length > 0 && (
+          <div className="relative mb-2.5">
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              value={moduleSearch}
+              onChange={(e) => setModuleSearch(e.target.value)}
+              placeholder="Tìm kiếm nhóm kiểm thử..."
+              className="w-full pl-8 pr-7 py-1.5 bg-slate-100/80 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-sky-500 transition-colors"
+            />
+            {moduleSearch && (
+              <button
+                type="button"
+                onClick={() => setModuleSearch("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded cursor-pointer"
+                title="Xóa tìm kiếm"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+        )}
+
         <div className="space-y-1.5">
-          {modules.map((m) => {
+          {filteredModules.map((m, index) => {
             const isSelected = selectedModule?.id === m.id;
+            const isDragging = draggedId === m.id;
+            const isOver = dragOverId === m.id;
+
+            // Search matching flows
+            const matchingFlows = moduleSearch.trim()
+              ? (m.flows || []).filter((f: any) =>
+                  f.title?.toLowerCase().includes(moduleSearch.toLowerCase().trim())
+                )
+              : [];
+
             return (
               <div
                 key={m.id}
                 onClick={() => onSelectModule(m)}
-                className={`group w-full flex items-center justify-between px-3 py-2.5 rounded-2xl text-xs font-medium transition-all duration-150 cursor-pointer ${
+                draggable={!isDev && !moduleSearch.trim()}
+                onDragStart={(e) => handleDragStart(e, m.id)}
+                onDragOver={(e) => handleDragOver(e, m.id)}
+                onDrop={(e) => handleDrop(e, m.id)}
+                onDragEnd={handleDragEnd}
+                className={`group w-full flex items-center justify-between px-2.5 py-2 rounded-2xl text-xs font-medium transition-all duration-150 cursor-pointer ${
                   isSelected
                     ? "bg-sky-50/80 dark:bg-slate-800/90 text-sky-700 dark:text-sky-300 font-semibold border border-sky-300 dark:border-sky-500/30 shadow-sm"
                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100/70 dark:hover:bg-slate-800/40 border border-transparent"
+                } ${isOver ? "border-t-2 border-sky-500 bg-sky-50/50 dark:bg-sky-950/30" : ""} ${
+                  isDragging ? "opacity-30 scale-95" : ""
                 }`}
               >
-                <div className="flex items-center gap-2 truncate">
+                <div className="flex items-center gap-1.5 truncate flex-1 min-w-0">
+                  {/* Drag Handle */}
+                  {!isDev && !moduleSearch.trim() && (
+                    <span
+                      title="Kéo thả để sắp xếp vị trí nhóm"
+                      className="p-0.5 text-slate-300 dark:text-slate-600 group-hover:text-slate-500 dark:group-hover:text-slate-400 cursor-grab active:cursor-grabbing shrink-0"
+                    >
+                      <GripVertical className="w-3.5 h-3.5" />
+                    </span>
+                  )}
+
                   <Layers
                     className={`w-4 h-4 shrink-0 ${
                       isSelected
@@ -176,8 +336,8 @@ export function ProjectSidebar({
                         : "text-slate-400 dark:text-slate-500"
                     }`}
                   />
-                  <div className="truncate">
-                    <span className="truncate block">{m.name}</span>
+                  <div className="truncate flex-1 min-w-0">
+                    <span className="truncate block font-semibold">{m.name}</span>
                     {m.assigned_tester_users && m.assigned_tester_users.length > 0 && (
                       <span className="text-[10px] text-slate-400 dark:text-slate-500 block truncate">
                         QA:{" "}
@@ -190,10 +350,49 @@ export function ProjectSidebar({
                           .join(", ")}
                       </span>
                     )}
+
+                    {/* Matching User Flows Badge */}
+                    {matchingFlows.length > 0 && (
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {matchingFlows.map((f: any) => (
+                          <span
+                            key={f.id}
+                            className="inline-flex items-center gap-1 text-[9.5px] px-1.5 py-0.2 rounded-md bg-sky-50 dark:bg-sky-500/15 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-500/30 font-medium"
+                          >
+                            <GitFork className="w-2.5 h-2.5 shrink-0" />
+                            <span className="truncate max-w-[130px]">Luồng: {f.title}</span>
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1 shrink-0">
+                <div className="flex items-center gap-1 shrink-0 ml-1">
+                  {/* Up / Down Reorder Buttons */}
+                  {!isDev && !moduleSearch.trim() && (
+                    <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-opacity">
+                      <button
+                        type="button"
+                        onClick={(e) => handleMoveUp(m.id, e)}
+                        disabled={index === 0}
+                        title="Di chuyển lên trên"
+                        className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition text-slate-400 hover:text-sky-600 dark:hover:text-sky-300 disabled:opacity-20 cursor-pointer disabled:cursor-not-allowed"
+                      >
+                        <ChevronUp className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => handleMoveDown(m.id, e)}
+                        disabled={index === modules.length - 1}
+                        title="Di chuyển xuống dưới"
+                        className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition text-slate-400 hover:text-sky-600 dark:hover:text-sky-300 disabled:opacity-20 cursor-pointer disabled:cursor-not-allowed"
+                      >
+                        <ChevronDown className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
+
                   {m.count_git_impacted > 0 && (
                     <span
                       className="flex h-2 w-2 relative"
@@ -214,7 +413,7 @@ export function ProjectSidebar({
                         type="button"
                         onClick={(e) => onOpenEditModule(m, e)}
                         title="Sửa nhóm kiểm thử & phân công Tester"
-                        className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition text-slate-500 dark:text-slate-400 hover:text-sky-600 dark:hover:text-sky-300"
+                        className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition text-slate-500 dark:text-slate-400 hover:text-sky-600 dark:hover:text-sky-300 cursor-pointer"
                       >
                         <Pencil className="w-3 h-3" />
                       </button>
@@ -223,7 +422,7 @@ export function ProjectSidebar({
                           type="button"
                           onClick={(e) => onDeleteModule(m, e)}
                           title="Xóa nhóm kiểm thử (Chỉ Super Admin)"
-                          className="p-1 hover:bg-rose-100 dark:hover:bg-slate-700 rounded transition text-slate-500 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400"
+                          className="p-1 hover:bg-rose-100 dark:hover:bg-slate-700 rounded transition text-slate-500 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 cursor-pointer"
                         >
                           <Trash2 className="w-3 h-3" />
                         </button>
@@ -234,6 +433,12 @@ export function ProjectSidebar({
               </div>
             );
           })}
+
+          {modules.length > 0 && filteredModules.length === 0 && (
+            <div className="text-center py-6 text-xs text-slate-400 dark:text-slate-500 border border-dashed border-slate-200 dark:border-slate-800/80 rounded-2xl">
+              Không tìm thấy nhóm kiểm thử nào khớp với &quot;{moduleSearch}&quot;.
+            </div>
+          )}
 
           {modules.length === 0 && (
             <div className="text-center py-8 text-xs text-slate-400 dark:text-slate-500 border border-dashed border-slate-200 dark:border-slate-800/80 rounded-2xl">

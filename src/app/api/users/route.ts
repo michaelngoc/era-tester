@@ -28,7 +28,7 @@ export async function GET(req: Request) {
 
   const allUsers = res.rows;
   const testers = allUsers.filter((u) =>
-    ["QA", "QC", "TESTER", "LEADER", "SUPER_ADMIN", "CTO", "PM", "MEMBER"].includes(u.role)
+    ["QA", "QC", "TESTER", "DEVELOPER", "LEADER", "SUPER_ADMIN", "CTO", "PM", "MEMBER"].includes(u.role)
   );
   const developers = allUsers.filter((u) =>
     ["DEVELOPER", "LEADER", "CTO", "SUPER_ADMIN", "MEMBER"].includes(u.role)

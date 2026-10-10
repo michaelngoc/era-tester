@@ -16,6 +16,7 @@ import {
   Sparkles,
   Info,
 } from "lucide-react";
+import { useToast } from "@/context/ToastContext";
 
 interface RoleOption {
   role: string;
@@ -26,6 +27,7 @@ interface RoleOption {
 }
 
 export default function AdminUsersPage() {
+  const { toast, confirm } = useToast();
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -103,14 +105,13 @@ export default function AdminUsersPage() {
       const data = await res.json();
       if (data.success) {
         setAllowedGlobalRoles(data.allowedRoles);
-        setRolesSavedMessage("Đã lưu cấu hình vai trò toàn quyền thành công!");
-        setTimeout(() => setRolesSavedMessage(null), 4000);
+        toast.success("Đã lưu cấu hình vai trò toàn quyền thành công!");
       } else {
-        alert(data.error || "Không thể lưu cấu hình");
+        toast.error(data.error || "Không thể lưu cấu hình");
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      alert("Đã xảy ra lỗi khi lưu cấu hình vai trò toàn quyền");
+      toast.error("Đã xảy ra lỗi khi lưu cấu hình: " + e.message);
     } finally {
       setSavingRoles(false);
     }
@@ -125,10 +126,14 @@ export default function AdminUsersPage() {
       });
       const data = await res.json();
       if (data.success) {
+        toast.success(`Đã cập nhật trạng thái người dùng sang ${status}`);
         fetchUsers();
+      } else {
+        toast.error(data.error || "Không thể cập nhật trạng thái");
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      toast.error("Lỗi cập nhật trạng thái: " + e.message);
     }
   };
 
@@ -141,23 +146,39 @@ export default function AdminUsersPage() {
       });
       const data = await res.json();
       if (data.success) {
+        toast.success(`Đã chuyển đổi vai trò người dùng sang ${role}`);
         fetchUsers();
+      } else {
+        toast.error(data.error || "Không thể cập nhật vai trò");
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      toast.error("Lỗi cập nhật vai trò: " + e.message);
     }
   };
 
   const handleDeleteUser = async (userId: number) => {
-    if (!confirm("Bạn có chắc chắn muốn xóa tài khoản này không?")) return;
+    const ok = await confirm({
+      title: "Xóa tài khoản người dùng",
+      message: "Bạn có chắc chắn muốn xóa tài khoản này không? Hành động này không thể hoàn tác.",
+      confirmText: "Xóa tài khoản",
+      cancelText: "Hủy",
+      variant: "danger",
+    });
+    if (!ok) return;
+
     try {
       const res = await fetch(`/api/admin/users?id=${userId}`, { method: "DELETE" });
       const data = await res.json();
       if (data.success) {
+        toast.success("Đã xóa tài khoản người dùng thành công");
         fetchUsers();
+      } else {
+        toast.error(data.error || "Không thể xóa tài khoản");
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      toast.error("Lỗi kết nối khi xóa tài khoản: " + e.message);
     }
   };
 

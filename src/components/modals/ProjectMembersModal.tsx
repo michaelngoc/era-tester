@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Users, UserPlus, Trash2, Shield, UserCheck, AlertCircle } from "lucide-react";
+import { useToast } from "@/context/ToastContext";
 
 export interface ProjectMembersModalProps {
   open: boolean;
@@ -20,6 +21,7 @@ export function ProjectMembersModal({
   onClose,
   onUpdated,
 }: ProjectMembersModalProps) {
+  const { toast, confirm } = useToast();
   const [members, setMembers] = useState<any[]>([]);
   const [allUsers, setAllUsers] = useState<any[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string>("");
@@ -86,11 +88,14 @@ export function ProjectMembersModal({
         setSelectedUserId("");
         await fetchMembers();
         if (onUpdated) onUpdated();
+        toast.success("Đã thêm thành viên vào dự án!");
       } else {
         setError(data.error || "Không thể thêm thành viên");
+        toast.error(data.error || "Không thể thêm thành viên");
       }
     } catch {
       setError("Lỗi kết nối máy chủ");
+      toast.error("Lỗi kết nối máy chủ");
     } finally {
       setSubmitting(false);
     }
@@ -98,7 +103,14 @@ export function ProjectMembersModal({
 
   const handleRemoveMember = async (userId: number, userName: string) => {
     if (!project?.id) return;
-    if (!confirm(`Bạn có chắc muốn gỡ ${userName} khỏi dự án này?`)) return;
+    const ok = await confirm({
+      title: "Gỡ thành viên",
+      message: `Bạn có chắc muốn gỡ ${userName} khỏi dự án này?`,
+      confirmText: "Gỡ thành viên",
+      cancelText: "Hủy",
+      variant: "danger",
+    });
+    if (!ok) return;
 
     try {
       const res = await fetch(`/api/projects/${project.id}/members?userId=${userId}`, {
@@ -108,11 +120,12 @@ export function ProjectMembersModal({
       if (data.success) {
         await fetchMembers();
         if (onUpdated) onUpdated();
+        toast.success(`Đã gỡ ${userName} khỏi dự án`);
       } else {
-        alert(data.error || "Không thể gỡ thành viên");
+        toast.error(data.error || "Không thể gỡ thành viên");
       }
     } catch {
-      alert("Lỗi kết nối khi gỡ thành viên");
+      toast.error("Lỗi kết nối khi gỡ thành viên");
     }
   };
 

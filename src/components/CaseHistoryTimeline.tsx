@@ -11,6 +11,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { useToast } from "@/context/ToastContext";
 
 export interface HistoryItem {
   id: number;
@@ -43,6 +44,7 @@ export default function CaseHistoryTimeline({
   userRole,
   onRollbackSuccess,
 }: CaseHistoryTimelineProps) {
+  const { toast, confirm } = useToast();
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [newNote, setNewNote] = useState("");
@@ -95,9 +97,13 @@ export default function CaseHistoryTimeline({
 
   const handleRollback = async (item: HistoryItem) => {
     if (!item.old_snapshot) return;
-    const confirmed = confirm(
-      `XÁC NHẬN KHÔI PHỤC (ROLLBACK):\nBạn có chắc chắn muốn đưa kịch bản kiểm thử về bản chụp tại mốc thời gian này?\n\n- Tiêu đề: "${item.old_snapshot.title}"\n- Trạng thái: ${item.old_snapshot.status}\n- Mức độ ưu tiên: ${item.old_snapshot.priority}`
-    );
+    const confirmed = await confirm({
+      title: "Xác nhận khôi phục bản chụp",
+      message: `Bạn có chắc chắn muốn đưa kịch bản kiểm thử về bản chụp tại mốc thời gian này?\n• Tiêu đề: "${item.old_snapshot.title}"\n• Trạng thái: ${item.old_snapshot.status}\n• Mức độ ưu tiên: ${item.old_snapshot.priority}`,
+      confirmText: "Khôi Phục",
+      cancelText: "Hủy",
+      variant: "primary",
+    });
     if (!confirmed) return;
 
     setRollingBackId(item.id);
@@ -109,17 +115,17 @@ export default function CaseHistoryTimeline({
       });
       const data = await res.json();
       if (data.success && data.case) {
-        alert(data.message || "Đã khôi phục thành công kịch bản kiểm thử!");
+        toast.success(data.message || "Đã khôi phục thành công kịch bản kiểm thử!");
         await fetchHistory();
         if (onRollbackSuccess) {
           onRollbackSuccess(data.case);
         }
       } else {
-        alert(data.error || "Không thể khôi phục bản chụp này");
+        toast.error(data.error || "Không thể khôi phục bản chụp này");
       }
     } catch (err: any) {
       console.error("Rollback error:", err);
-      alert("Lỗi kết nối khi gửi yêu cầu khôi phục!");
+      toast.error("Lỗi kết nối khi gửi yêu cầu khôi phục!");
     } finally {
       setRollingBackId(null);
     }

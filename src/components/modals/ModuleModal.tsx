@@ -370,7 +370,7 @@ export function ModuleModal({
           <div className="flex items-center justify-between">
             <label className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
               <UserCheck className="w-4 h-4 text-emerald-500" />
-              <span>Nhân Sự Phụ Trách Kiểm Thử (QA / QC / Tester / CTO)</span>
+              <span>Nhân Sự Phụ Trách Kiểm Thử (QA / QC / Developer / Tester / CTO)</span>
             </label>
             <span className="text-[10.5px] text-slate-500 dark:text-slate-400 font-medium">
               Đã chọn: <strong>{assignedTesters.length}</strong> người
@@ -425,7 +425,7 @@ export function ModuleModal({
             )}
           </div>
           <p className="text-[10.5px] text-slate-500 dark:text-slate-400 leading-relaxed">
-            Chọn bất kỳ ai phụ trách kiểm thử (QA, QC, Tester, Leader, CTO). Khi có commit thay đổi file khớp mẫu, hệ thống sẽ tự động gán task và gửi email thông báo trực tiếp.
+            Chọn bất kỳ ai phụ trách kiểm thử (QA, QC, Developer, Tester, Leader, CTO). Khi có commit thay đổi file khớp mẫu, hệ thống sẽ tự động gán task và gửi email thông báo trực tiếp.
           </p>
         </div>
 

@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import CopyCommitSnippet from "./CopyCommitSnippet";
 import { TestCase } from "./CaseDetailModal";
+import { useToast } from "@/context/ToastContext";
 import {
   X,
   Plus,
@@ -59,6 +60,8 @@ export default function StepChecklistDrawer({
   onDeleteStep,
   onClaimTask,
 }: StepChecklistDrawerProps) {
+  const { toast, confirm } = useToast();
+
   // Form tạo kịch bản mới
   const [showAddForm, setShowAddForm] = useState(false);
   const [newTitle, setNewTitle] = useState("");
@@ -110,11 +113,12 @@ export default function StepChecklistDrawer({
       const data = await res.json();
       if (data?.url) {
         setNewEvidenceUrls((prev) => [...prev, data.url]);
+        toast.success("Đã tải lên bằng chứng đính kèm!");
       } else {
-        alert("Tải lên thất bại: " + (data?.error || "Lỗi không xác định"));
+        toast.error("Tải lên thất bại: " + (data?.error || "Lỗi không xác định"));
       }
     } catch (err: any) {
-      alert("Lỗi tải lên: " + err.message);
+      toast.error("Lỗi tải lên: " + err.message);
     } finally {
       setUploadingEvidence(false);
       e.target.value = "";
@@ -144,12 +148,13 @@ export default function StepChecklistDrawer({
         const updateData = await updateRes.json();
         if (updateData.success && updateData.case && onUpdateCase) {
           onUpdateCase(updateData.case);
+          toast.success("Đã bổ sung ảnh bằng chứng vào kịch bản!");
         }
       } else {
-        alert("Tải lên thất bại: " + (data?.error || "Lỗi không xác định"));
+        toast.error("Tải lên thất bại: " + (data?.error || "Lỗi không xác định"));
       }
     } catch (err: any) {
-      alert("Lỗi tải ảnh: " + err.message);
+      toast.error("Lỗi tải ảnh: " + err.message);
     } finally {
       setUploadingCaseId(null);
       e.target.value = "";
@@ -158,7 +163,10 @@ export default function StepChecklistDrawer({
 
   const handleCreateChecklist = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTitle.trim()) return;
+    if (!newTitle.trim()) {
+      toast.error("Vui lòng nhập tiêu đề kịch bản kiểm thử!");
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -169,7 +177,8 @@ export default function StepChecklistDrawer({
         title: newTitle.trim(),
         input_data: newInput.trim(),
         output_data: newOutput.trim(),
-        expected_result: newExpected.trim(),
+        expected_result:
+          newExpected.trim() || `Kiểm thử bước ${step.title}: Hoạt động chính xác theo yêu cầu kịch bản`,
         actual_result: newActual.trim(),
         response_payload: newResponseJson.trim(),
         evidence_urls: newEvidenceUrls,
@@ -177,7 +186,7 @@ export default function StepChecklistDrawer({
         priority: newPriority,
       });
 
-      // Reset form
+      // Reset form only on successful addition
       setNewTitle("");
       setNewInput("");
       setNewOutput("");
@@ -187,6 +196,8 @@ export default function StepChecklistDrawer({
       setNewEvidenceUrls([]);
       setNewStatus("CLOSED");
       setShowAddForm(false);
+    } catch (err) {
+      // Form remains open so user does not lose input
     } finally {
       setSubmitting(false);
     }
@@ -600,8 +611,15 @@ export default function StepChecklistDrawer({
                     {/* Nút Xóa */}
                     <button
                       type="button"
-                      onClick={() => {
-                        if (confirm(`Xóa kịch bản "${item.title}"?`)) {
+                      onClick={async () => {
+                        const ok = await confirm({
+                          title: "Xóa kịch bản",
+                          message: `Bạn có chắc muốn xóa kịch bản "${item.title}"?`,
+                          confirmText: "Xóa",
+                          cancelText: "Hủy",
+                          variant: "danger",
+                        });
+                        if (ok) {
                           onDeleteCase(item.id);
                         }
                       }}
@@ -925,8 +943,15 @@ export default function StepChecklistDrawer({
         <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex items-center justify-between text-xs">
           {onDeleteStep ? (
             <button
-              onClick={() => {
-                if (confirm(`Bạn có chắc muốn xóa bước "${step.title}" khỏi sơ đồ?`)) {
+              onClick={async () => {
+                const ok = await confirm({
+                  title: "Xóa bước khỏi sơ đồ",
+                  message: `Bạn có chắc muốn xóa bước "${step.title}" khỏi sơ đồ? Các bước còn lại sẽ được tự động đánh lại số thứ tự (Bước 1, Bước 2...).`,
+                  confirmText: "Xóa bước",
+                  cancelText: "Hủy",
+                  variant: "danger",
+                });
+                if (ok) {
                   onDeleteStep(step.id);
                   onClose();
                 }

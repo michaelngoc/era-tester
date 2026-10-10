@@ -27,6 +27,7 @@ import {
   Eye,
   Plus,
   ListChecks,
+  ListOrdered,
 } from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
 
@@ -250,10 +251,34 @@ export default function FlowDiagram({
   const [nodes, setNodes, onNodesChange] = useNodesState(defaultNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(defaultEdges);
 
+  // Preserve active coordinates when flowNodes/cases change without resetting dragged positions
   React.useEffect(() => {
-    setNodes(defaultNodes);
+    setNodes((prevNodes) => {
+      if (!prevNodes || prevNodes.length === 0) return defaultNodes;
+      const currentPosMap = new Map(prevNodes.map((n) => [n.id, n.position]));
+      return defaultNodes.map((dn) => {
+        const existingPos = currentPosMap.get(dn.id);
+        return existingPos ? { ...dn, position: existingPos } : dn;
+      });
+    });
     setEdges(defaultEdges);
   }, [defaultNodes, defaultEdges, setNodes, setEdges]);
+
+  // Persist node positions permanently as soon as user drops the dragged node
+  const onNodeDragStop = useCallback(
+    (_event: any, node: Node) => {
+      setNodes((currentNodes) => {
+        const nextNodes = currentNodes.map((n) =>
+          n.id === node.id ? { ...n, position: node.position } : n
+        );
+        if (onSaveFlow) {
+          onSaveFlow(nextNodes, edges);
+        }
+        return nextNodes;
+      });
+    },
+    [edges, onSaveFlow, setNodes]
+  );
 
   const onConnect = useCallback(
     (params: Connection) => {
@@ -273,17 +298,78 @@ export default function FlowDiagram({
     [nodes, onSaveFlow, setEdges]
   );
 
+  // Re-index all steps sequentially (Bước 1, Bước 2, Bước 3...) based on horizontal layout
+  const handleReindexSteps = useCallback(() => {
+    if (nodes.length === 0) return;
+    const sorted = [...nodes].sort((a, b) => (a.position?.x ?? 0) - (b.position?.x ?? 0));
+    const reindexedNodes = sorted.map((node, idx) => {
+      const stepNum = idx + 1;
+      const nodeData = (node.data || {}) as Record<string, any>;
+      let rawTitle = String(nodeData.title || `Bước ${stepNum}`);
+      rawTitle = rawTitle.replace(/^(Bước|Step)\s*\d+\s*[:\-]\s*/i, "").trim();
+      if (!rawTitle) rawTitle = `Bước ${stepNum}`;
+      return {
+        ...node,
+        position: {
+          x: idx * 320 + 60,
+          y: node.position?.y ?? 120,
+        },
+        data: {
+          ...nodeData,
+          title: `Bước ${stepNum}: ${rawTitle}`,
+        },
+      };
+    });
+
+    const reindexedEdges: Edge[] = [];
+    for (let i = 0; i < reindexedNodes.length - 1; i++) {
+      reindexedEdges.push({
+        id: `e-${reindexedNodes[i].id}-${reindexedNodes[i + 1].id}`,
+        source: reindexedNodes[i].id,
+        target: reindexedNodes[i + 1].id,
+        style: { stroke: "#38bdf8", strokeWidth: 2 },
+        markerEnd: {
+          type: MarkerType.ArrowClosed,
+          color: "#38bdf8",
+          width: 16,
+          height: 16,
+        },
+      });
+    }
+
+    setNodes(reindexedNodes);
+    setEdges(reindexedEdges);
+    if (onSaveFlow) onSaveFlow(reindexedNodes, reindexedEdges);
+  }, [nodes, onSaveFlow, setNodes, setEdges]);
+
   const handleAddStepSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newStepTitle.trim()) return;
 
-    const nextId = `step-${nodes.length + 1}`;
+    // Generate collision-safe unique ID
+    const existingIds = new Set(nodes.map((n) => n.id));
+    let nextNum = nodes.length + 1;
+    while (existingIds.has(`step-${nextNum}`)) {
+      nextNum++;
+    }
+    const nextId = `step-${nextNum}`;
+
+    // Clean title and ensure "Bước X: ..." format
+    let cleanTitle = newStepTitle.trim().replace(/^(Bước|Step)\s*\d+\s*[:\-]\s*/i, "").trim();
+    if (!cleanTitle) cleanTitle = newStepTitle.trim();
+    const formattedTitle = `Bước ${nodes.length + 1}: ${cleanTitle}`;
+
+    // Place to the right of the rightmost node
+    const maxPosX = nodes.reduce((max, n) => Math.max(max, n.position?.x ?? 0), 0);
+    const newPosX = nodes.length > 0 ? maxPosX + 320 : 60;
+    const newPosY = nodes[0]?.position?.y ?? 120;
+
     const newNode: Node = {
       id: nextId,
       type: "testStep",
-      position: { x: nodes.length * 300 + 60, y: 120 },
+      position: { x: newPosX, y: newPosY },
       data: {
-        title: newStepTitle.trim(),
+        title: formattedTitle,
         stepId: nextId,
         stepCases: [],
         onSelect: onSelectStep,
@@ -291,20 +377,18 @@ export default function FlowDiagram({
     };
 
     const nextNodes = [...nodes, newNode];
-    let nextEdges = edges;
+    let nextEdges = [...edges];
 
     if (nodes.length > 0) {
-      const lastNode = nodes[nodes.length - 1];
-      nextEdges = [
-        ...edges,
-        {
-          id: `e-${lastNode.id}-${nextId}`,
-          source: lastNode.id,
-          target: nextId,
-          style: { stroke: "#38bdf8", strokeWidth: 2 },
-          markerEnd: { type: MarkerType.ArrowClosed, color: "#38bdf8" },
-        },
-      ];
+      const sortedByX = [...nodes].sort((a, b) => (a.position?.x ?? 0) - (b.position?.x ?? 0));
+      const lastNode = sortedByX[sortedByX.length - 1];
+      nextEdges.push({
+        id: `e-${lastNode.id}-${nextId}`,
+        source: lastNode.id,
+        target: nextId,
+        style: { stroke: "#38bdf8", strokeWidth: 2 },
+        markerEnd: { type: MarkerType.ArrowClosed, color: "#38bdf8" },
+      });
     }
 
     setNodes(nextNodes);
@@ -327,8 +411,19 @@ export default function FlowDiagram({
           <span>Thêm Bước Vào Sơ Đồ</span>
         </button>
 
+        {nodes.length > 1 && (
+          <button
+            onClick={handleReindexSteps}
+            title="Tự động sắp xếp và đánh lại thứ tự các bước (Bước 1, Bước 2...) từ trái qua phải"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 transition cursor-pointer"
+          >
+            <ListOrdered className="w-3.5 h-3.5 text-sky-500" />
+            <span className="hidden sm:inline">Đánh Lại Số Bước</span>
+          </button>
+        )}
+
         <span className="text-[11px] text-slate-500 dark:text-slate-400 pl-2 pr-1 hidden sm:inline">
-          💡 Nhấp vào bất kỳ Bước nào để quản lý Kịch bản kiểm thử
+          💡 Kéo thả để lưu vị trí bước • Nhấp vào bước để xem kịch bản
         </span>
       </div>
 
@@ -354,6 +449,7 @@ export default function FlowDiagram({
         nodeTypes={nodeTypes}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
+        onNodeDragStop={onNodeDragStop}
         onConnect={onConnect}
         fitView
         proOptions={{ hideAttribution: true }}

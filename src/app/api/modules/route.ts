@@ -31,7 +31,15 @@ export async function GET(req: NextRequest) {
                WHERE u.id = ANY(m.assigned_testers)
              ),
              '[]'::json
-           ) AS assigned_tester_users
+           ) AS assigned_tester_users,
+           COALESCE(
+             (
+               SELECT json_agg(json_build_object('id', f.id, 'title', f.title))
+               FROM era_tester_flows f
+               WHERE f.module_id = m.id AND (f.is_deleted IS NULL OR f.is_deleted = FALSE)
+             ),
+             '[]'::json
+           ) AS flows
     FROM era_tester_modules m
     JOIN era_tester_projects p ON p.id = m.project_id
     LEFT JOIN era_tester_cases c ON c.module_id = m.id AND (c.is_deleted IS NULL OR c.is_deleted = FALSE)
@@ -53,7 +61,7 @@ export async function GET(req: NextRequest) {
     sql += ` AND p.slug = $${params.length}`;
   }
 
-  sql += ` GROUP BY m.id, p.name, p.slug ORDER BY m.sort_order ASC, m.id ASC`;
+  sql += ` GROUP BY m.id, p.name, p.slug ORDER BY COALESCE(m.sort_order, 0) ASC, m.id ASC`;
 
   const res = await query(sql, params);
   return NextResponse.json({ modules: res.rows });

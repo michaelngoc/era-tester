@@ -13,6 +13,7 @@ import { ModuleModal } from "@/components/modals/ModuleModal";
 import { FlowModal } from "@/components/modals/FlowModal";
 import { AddCaseModal } from "@/components/modals/AddCaseModal";
 import { ConfirmDeleteModal } from "@/components/modals/ConfirmDeleteModal";
+import { useToast } from "@/context/ToastContext";
 
 export interface DashboardClientProps {
   currentUser: any;
@@ -25,6 +26,8 @@ export default function DashboardClient({
   initialProjects,
   availableTesters,
 }: DashboardClientProps) {
+  const { toast, confirm } = useToast();
+
   // Projects state
   const [projects, setProjects] = useState<any[]>(initialProjects);
   const [selectedProject, setSelectedProject] = useState<any>(
@@ -179,23 +182,49 @@ export default function DashboardClient({
         }
         setConfirmDeleteProject(null);
         await fetchProjects();
+        toast.success("Đã xóa dự án thành công!");
       } else {
-        alert(data.error || "Không thể xóa dự án");
+        toast.error(data.error || "Không thể xóa dự án");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert("Lỗi khi xóa dự án!");
+      toast.error("Lỗi kết nối khi xóa dự án: " + (err.message || ""));
     } finally {
       setIsDeletingProject(false);
     }
   };
 
   // Module handlers
+  const handleReorderModules = async (newOrderedModules: any[]) => {
+    setModules(newOrderedModules);
+    try {
+      const res = await fetch("/api/modules/reorder", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderedIds: newOrderedModules.map((m) => m.id) }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        toast.error(data.error || "Không thể lưu thứ tự nhóm kiểm thử");
+        if (selectedProject?.id) fetchModules(selectedProject.id);
+      } else {
+        toast.success("Đã cập nhật thứ tự nhóm kiểm thử");
+      }
+    } catch (err: any) {
+      toast.error("Lỗi cập nhật thứ tự: " + (err.message || ""));
+      if (selectedProject?.id) fetchModules(selectedProject.id);
+    }
+  };
+
   const handleDeleteModule = async (mod: any, e: React.MouseEvent) => {
     e.stopPropagation();
-    const confirmed = confirm(
-      `Bạn có chắc muốn xóa nhóm kiểm thử "${mod.name}" và toàn bộ user flows của nó?`
-    );
+    const confirmed = await confirm({
+      title: "Xóa Nhóm Kiểm Thử",
+      message: `Bạn có chắc muốn xóa nhóm kiểm thử "${mod.name}" và toàn bộ user flows của nó?`,
+      confirmText: "Xóa Nhóm",
+      cancelText: "Hủy",
+      variant: "danger",
+    });
     if (!confirmed) return;
 
     try {
@@ -206,15 +235,25 @@ export default function DashboardClient({
           setSelectedModule(null);
         }
         await fetchModules(selectedProject.id);
+        toast.success(`Đã xóa nhóm kiểm thử "${mod.name}"`);
+      } else {
+        toast.error(data.error || "Không thể xóa nhóm kiểm thử");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      toast.error("Lỗi khi xóa nhóm: " + err.message);
     }
   };
 
   // Flow handlers
   const handleDeleteFlow = async (flow: any) => {
-    const confirmed = confirm(`Bạn có chắc muốn xóa sơ đồ User Flow "${flow.title}"?`);
+    const confirmed = await confirm({
+      title: "Xóa Sơ Đồ User Flow",
+      message: `Bạn có chắc muốn xóa sơ đồ User Flow "${flow.title}"?`,
+      confirmText: "Xóa Flow",
+      cancelText: "Hủy",
+      variant: "danger",
+    });
     if (!confirmed) return;
 
     try {
@@ -222,36 +261,88 @@ export default function DashboardClient({
       const data = await res.json();
       if (data.success) {
         await fetchFlowsAndCases(selectedModule.id);
+        toast.success(`Đã xóa sơ đồ "${flow.title}"`);
+      } else {
+        toast.error(data.error || "Không thể xóa sơ đồ");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      toast.error("Lỗi khi xóa sơ đồ: " + err.message);
     }
   };
 
   const handleSaveFlowLayout = async (nodes: any[], edges: any[]) => {
     if (!selectedFlow?.id) return;
     try {
-      await fetch(`/api/flows/${selectedFlow.id}`, {
+      const res = await fetch(`/api/flows/${selectedFlow.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ nodes, edges }),
       });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        toast.error(data.error || "Lỗi lưu sơ đồ vào cơ sở dữ liệu");
+        return;
+      }
       setSelectedFlow((prev: any) => ({ ...prev, nodes, edges }));
-    } catch (err) {
+      setFlows((prev) =>
+        prev.map((f) => (f.id === selectedFlow.id ? { ...f, nodes, edges } : f))
+      );
+    } catch (err: any) {
       console.error("Lỗi lưu sơ đồ:", err);
+      toast.error("Lỗi kết nối khi lưu sơ đồ: " + err.message);
     }
   };
 
   const handleDeleteStepFromFlow = async (stepId: string) => {
     if (!selectedFlow?.id) return;
     const currentNodes = selectedFlow.nodes || [];
-    const currentEdges = selectedFlow.edges || [];
-    const nextNodes = currentNodes.filter((n: any) => n.id !== stepId);
-    const nextEdges = currentEdges.filter(
-      (e: any) => e.source !== stepId && e.target !== stepId
+    const remainingNodes = currentNodes.filter((n: any) => n.id !== stepId);
+
+    // Sort remaining nodes from left to right
+    const sorted = [...remainingNodes].sort(
+      (a: any, b: any) => (a.position?.x ?? 0) - (b.position?.x ?? 0)
     );
-    await handleSaveFlowLayout(nextNodes, nextEdges);
+
+    // Renumber remaining nodes sequentially (Bước 1, Bước 2, Bước 3...)
+    const reindexedNodes = sorted.map((node: any, idx: number) => {
+      const stepNum = idx + 1;
+      let rawTitle = node.data?.title || `Bước ${stepNum}`;
+      rawTitle = rawTitle.replace(/^(Bước|Step)\s*\d+\s*[:\-]\s*/i, "").trim();
+      if (!rawTitle) rawTitle = `Bước ${stepNum}`;
+      return {
+        ...node,
+        position: {
+          x: idx * 320 + 60,
+          y: node.position?.y ?? 120,
+        },
+        data: {
+          ...node.data,
+          title: `Bước ${stepNum}: ${rawTitle}`,
+        },
+      };
+    });
+
+    // Reconnect linear edges
+    const reindexedEdges: any[] = [];
+    for (let i = 0; i < reindexedNodes.length - 1; i++) {
+      reindexedEdges.push({
+        id: `e-${reindexedNodes[i].id}-${reindexedNodes[i + 1].id}`,
+        source: reindexedNodes[i].id,
+        target: reindexedNodes[i + 1].id,
+        style: { stroke: "#38bdf8", strokeWidth: 2 },
+        markerEnd: {
+          type: "arrowclosed",
+          color: "#38bdf8",
+          width: 16,
+          height: 16,
+        },
+      });
+    }
+
+    await handleSaveFlowLayout(reindexedNodes, reindexedEdges);
     setSelectedStep(null);
+    toast.success("Đã xóa bước và tự động đánh lại số thứ tự sơ đồ!");
   };
 
   // Case & Checklist handlers
@@ -268,9 +359,17 @@ export default function DashboardClient({
       const data = await res.json();
       if (data.success && data.case) {
         setCases((prev) => prev.map((c) => (c.id === id ? data.case : c)));
+        if (nextStatus === "CLOSED") {
+          toast.success("Đã đánh dấu Đạt kiểm thử!");
+        } else if (nextStatus === "NEW") {
+          toast.warning("Đã báo lỗi phát sinh cho kịch bản!");
+        }
+      } else {
+        toast.error(data.error || "Không thể cập nhật trạng thái");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      toast.error("Lỗi cập nhật trạng thái: " + err.message);
     }
   };
 
@@ -285,14 +384,23 @@ export default function DashboardClient({
       if (data.success && data.case) {
         setCases((prev) => prev.map((c) => (c.id === id ? data.case : c)));
         if (selectedCase?.id === id) setSelectedCase(data.case);
+        toast.success(
+          action === "claim_bug" ? "Đã nhận khắc phục lỗi thành công!" : "Đã nhận phụ trách kiểm thử!"
+        );
+      } else {
+        toast.error(data.error || "Không thể nhận nhiệm vụ");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      toast.error("Lỗi nhận nhiệm vụ: " + err.message);
     }
   };
 
   const handleAddChecklistCase = async (newCase: Partial<TestCase>) => {
-    if (!selectedModule?.id) return;
+    if (!selectedModule?.id) {
+      toast.error("Vui lòng chọn nhóm kiểm thử trước!");
+      return;
+    }
     try {
       const res = await fetch("/api/cases", {
         method: "POST",
@@ -304,21 +412,33 @@ export default function DashboardClient({
         }),
       });
       const data = await res.json();
-      if (data.success && data.case) {
-        setCases((prev) => [data.case, ...prev]);
+      if (!res.ok || !data.success || !data.case) {
+        toast.error(data.error || "Không thể thêm kịch bản kiểm thử");
+        throw new Error(data.error || "Lỗi lưu kịch bản");
       }
-    } catch (err) {
-      console.error(err);
+      setCases((prev) => [data.case, ...prev]);
+      toast.success(`Đã thêm kịch bản "${data.case.title}" thành công!`);
+    } catch (err: any) {
+      console.error("Lỗi tạo checklist case:", err);
+      toast.error(err.message || "Lỗi khi lưu kịch bản");
+      throw err;
     }
   };
 
   const handleDeleteCase = async (id: number) => {
     try {
-      await fetch(`/api/cases/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/cases/${id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        toast.error(data.error || "Không thể xóa kịch bản");
+        return;
+      }
       setCases((prev) => prev.filter((c) => c.id !== id));
       if (selectedCase?.id === id) setSelectedCase(null);
-    } catch (err) {
+      toast.success("Đã xóa kịch bản kiểm thử");
+    } catch (err: any) {
       console.error(err);
+      toast.error("Lỗi khi xóa kịch bản: " + err.message);
     }
   };
 
@@ -382,6 +502,7 @@ export default function DashboardClient({
           setModuleModal({ open: true, mode: "edit", data: m });
         }}
         onDeleteModule={handleDeleteModule}
+        onReorderModules={handleReorderModules}
       />
 
       {/* Main Workspace Stage */}

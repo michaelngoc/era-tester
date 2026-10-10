@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import CreateRunModal from "./CreateRunModal";
+import { useToast } from "@/context/ToastContext";
 
 export interface RunItem {
   id: number;
@@ -43,6 +44,7 @@ export default function RunsListClient({
   initialRuns,
   projects,
 }: RunsListClientProps) {
+  const { toast, confirm } = useToast();
   const [runs, setRuns] = useState<RunItem[]>(initialRuns);
   const [selectedProjectId, setSelectedProjectId] = useState<number | "ALL">("ALL");
   const [tab, setTab] = useState<"in_progress" | "completed">("in_progress");
@@ -86,9 +88,14 @@ export default function RunsListClient({
 
   const handleCompleteRun = async (runId: number, e: React.MouseEvent) => {
     e.stopPropagation();
-    const confirmed = confirm(
-      "Xác nhận khóa và chốt nghiệm thu đợt kiểm thử này?\nKết quả sẽ được lưu trữ vĩnh viễn vào lịch sử."
-    );
+    const confirmed = await confirm({
+      title: "Chốt nghiệm thu đợt kiểm thử",
+      message:
+        "Bạn có chắc muốn khóa và chốt nghiệm thu đợt kiểm thử này? Kết quả sẽ được lưu trữ vĩnh viễn vào lịch sử kiểm thử.",
+      confirmText: "Khóa & Chốt Đợt",
+      cancelText: "Hủy",
+      variant: "primary",
+    });
     if (!confirmed) return;
 
     setCompletingId(runId);
@@ -100,10 +107,14 @@ export default function RunsListClient({
       });
       const data = await res.json();
       if (data.success) {
+        toast.success("Đã khóa và chốt nghiệm thu đợt kiểm thử thành công!");
         await fetchRuns();
+      } else {
+        toast.error(data.error || "Không thể chốt nghiệm thu");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      toast.error("Lỗi kết nối khi chốt nghiệm thu: " + err.message);
     } finally {
       setCompletingId(null);
     }

@@ -19,6 +19,7 @@ import {
 import JsonViewer from "./JsonViewer";
 import CopyCommitSnippet from "./CopyCommitSnippet";
 import CaseHistoryTimeline from "./CaseHistoryTimeline";
+import { useToast } from "@/context/ToastContext";
 
 export interface TestCase {
   id: number;
@@ -58,6 +59,7 @@ export default function CaseDetailModal({
   onUpdate,
   onDelete,
 }: CaseDetailModalProps) {
+  const { toast, confirm } = useToast();
   const [formData, setFormData] = useState<TestCase | null>(null);
   const [activeTab, setActiveTab] = useState<"scenario" | "io" | "json" | "evidence" | "history">("scenario");
   const [uploading, setUploading] = useState(false);
@@ -106,9 +108,13 @@ export default function CaseDetailModal({
       if (data.success && data.case) {
         setFormData(data.case);
         onUpdate(data.case);
+        toast.success("Đã nhận sửa lỗi thành công!");
+      } else {
+        toast.error(data.error || "Không thể nhận sửa lỗi");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Claim bug error:", err);
+      toast.error("Lỗi khi nhận sửa lỗi: " + err.message);
     } finally {
       setSaving(false);
     }
@@ -126,9 +132,13 @@ export default function CaseDetailModal({
       if (data.success && data.case) {
         setFormData(data.case);
         onUpdate(data.case);
+        toast.success("Đã nhận phụ trách kiểm thử!");
+      } else {
+        toast.error(data.error || "Không thể nhận kiểm thử");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Claim test error:", err);
+      toast.error("Lỗi khi nhận kiểm thử: " + err.message);
     } finally {
       setSaving(false);
     }
@@ -155,10 +165,14 @@ export default function CaseDetailModal({
       const data = await res.json();
       if (data.success && data.case) {
         onUpdate(data.case);
+        toast.success("Đã lưu kịch bản kiểm thử thành công!");
         onClose();
+      } else {
+        toast.error(data.error || "Không thể lưu kịch bản kiểm thử");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Save error:", err);
+      toast.error("Lỗi kết nối khi lưu kịch bản: " + err.message);
     } finally {
       setSaving(false);
     }
@@ -197,7 +211,7 @@ export default function CaseDetailModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-200">
       <div className="relative w-full max-w-3xl max-h-[92vh] flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden transition-colors duration-150">
         {/* Modal Top Header */}
         <div className="p-6 pb-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/90 backdrop-blur-xl">
@@ -587,8 +601,16 @@ export default function CaseDetailModal({
         <div className="p-4 px-6 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/90 flex items-center justify-between">
           {onDelete && canDelete ? (
             <button
-              onClick={() => {
-                if (confirm("Bạn có chắc chắn muốn xóa mềm kịch bản này? Dữ liệu vẫn được bảo lưu an toàn trong hệ thống.")) {
+              onClick={async () => {
+                const ok = await confirm({
+                  title: "Xóa kịch bản",
+                  message:
+                    "Bạn có chắc chắn muốn xóa mềm kịch bản này? Dữ liệu vẫn được bảo lưu an toàn trong hệ thống.",
+                  confirmText: "Xóa kịch bản",
+                  cancelText: "Hủy",
+                  variant: "danger",
+                });
+                if (ok) {
                   onDelete(formData.id);
                   onClose();
                 }

@@ -96,12 +96,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  if (!expectedResult || expectedResult.length === 0) {
-    return NextResponse.json(
-      { error: "Kết quả kỳ vọng (Expected Result) không được để trống!" },
-      { status: 400 }
-    );
-  }
+  const finalExpected = expectedResult || "Hoạt động chính xác theo yêu cầu kịch bản";
 
   const res = await query(
     `INSERT INTO era_tester_cases 
@@ -115,7 +110,7 @@ export async function POST(req: NextRequest) {
       title,
       inputData,
       outputData,
-      expectedResult,
+      finalExpected,
       actualResult,
       responsePayload,
       evidenceUrls,
