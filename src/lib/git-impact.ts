@@ -2,19 +2,44 @@ import "server-only";
 import micromatch from "micromatch";
 import { query } from "./db";
 import { sendGitPushImpactEmail } from "./mailer";
+import { extractCaseIds, isTesterNotifyCommit } from "./commit-types";
 
-export interface GitCommitPayload {
-  commitHash: string;
-  commitMessage: string;
+export interface GitCommitInfo {
+  hash: string;
+  message: string;
   authorName: string;
   authorEmail: string;
+  files: string[];
+}
+
+export interface GitPushPayload {
+  /** Thứ tự cũ -> mới (đúng như GitHub push payload). */
+  commits: GitCommitInfo[];
   branch: string;
-  modifiedFiles: string[];
   repoFullName?: string;
 }
 
-export async function processGitPushImpact(payload: GitCommitPayload) {
-  const { commitHash, commitMessage, authorName, authorEmail, branch, modifiedFiles, repoFullName } = payload;
+export async function processGitPushImpact(payload: GitPushPayload) {
+  const { branch, repoFullName } = payload;
+
+  // Chỉ commit có type feat/fix/perf/refactor mới được gửi cho Tester (xem commit-types.ts).
+  const relevantCommits = payload.commits.filter((c) => isTesterNotifyCommit(c.message));
+  if (relevantCommits.length === 0) {
+    return {
+      impactedCount: 0,
+      impactedModules: [],
+      referencedCases: [] as number[],
+      activeRunId: null,
+      skippedCommits: payload.commits.length,
+    };
+  }
+
+  const headCommit = relevantCommits[relevantCommits.length - 1];
+  const commitHash = headCommit.hash;
+  const commitMessage = headCommit.message;
+  const authorName = headCommit.authorName;
+  const authorEmail = headCommit.authorEmail;
+  const modifiedFiles = Array.from(new Set(relevantCommits.flatMap((c) => c.files)));
 
   // 1. Xác định Project tương ứng từ repository full_name
   let targetProjectId: number | null = null;
@@ -73,64 +98,49 @@ export async function processGitPushImpact(payload: GitCommitPayload) {
     }
   }
 
-  // 3. Quét commitMessage xem có mã [#ID] hoặc [case-ID] hay không
-  // Ví dụ: "fix: xử lý lỗi validate [#42]" hoặc "fix bug [case-15]"
-  const caseIdMatches = Array.from(
-    commitMessage.matchAll(/\[#(?:case-)?(\d+)\]|#(\d+)/gi)
-  );
+  // 3. Quét mã [#ID] / [case-ID] trong từng commit hợp lệ -> TỰ ĐỘNG CHUYỂN SANG VERIFY VÀ GHI AUDIT LOG
   const referencedCaseIds: number[] = [];
-  for (const m of caseIdMatches) {
-    const idStr = m[1] || m[2];
-    if (idStr) {
-      const idNum = parseInt(idStr, 10);
-      if (!isNaN(idNum) && !referencedCaseIds.includes(idNum)) {
-        referencedCaseIds.push(idNum);
-      }
-    }
-  }
+  for (const commit of relevantCommits) {
+    for (const caseId of extractCaseIds(commit.message)) {
+      if (!referencedCaseIds.includes(caseId)) referencedCaseIds.push(caseId);
 
-  // Nếu commit có chứa mã case cụ thể -> TỰ ĐỘNG CHUYỂN SANG VERIFY VÀ GHI AUDIT LOG!
-  if (referencedCaseIds.length > 0) {
-    for (const caseId of referencedCaseIds) {
-      const caseRes = await query<{ id: number; status: string; module_id: number }>(
-        `SELECT id, status, module_id FROM era_tester_cases WHERE id = $1 LIMIT 1`,
+      const caseRes = await query<{ id: number; status: string }>(
+        `SELECT id, status FROM era_tester_cases WHERE id = $1 LIMIT 1`,
         [caseId]
       );
-      if (caseRes.rows.length > 0) {
-        const curCase = caseRes.rows[0];
-        const oldStatus = curCase.status;
+      if (caseRes.rows.length === 0) continue;
+      const oldStatus = caseRes.rows[0].status;
 
-        // Cập nhật trạng thái case sang VERIFY và gán cho Tester tạo kịch bản (nếu vẫn còn ACTIVE)
-        await query(
-          `UPDATE era_tester_cases c
-           SET status = 'VERIFY', 
-               is_impacted_by_git = TRUE,
-               assigned_to = (
-                 SELECT CASE WHEN u.status = 'ACTIVE' THEN u.id ELSE NULL END
-                 FROM era_tester_users u
-                 WHERE u.id = c.created_by
-               ),
-               last_run_id = COALESCE($1, c.last_run_id),
-               updated_at = NOW() 
-           WHERE c.id = $2`,
-          [activeRunId, caseId]
-        );
+      // Chuyển case sang VERIFY và gán cho Tester tạo kịch bản (nếu vẫn còn ACTIVE)
+      await query(
+        `UPDATE era_tester_cases c
+         SET status = 'VERIFY', 
+             is_impacted_by_git = TRUE,
+             assigned_to = (
+               SELECT CASE WHEN u.status = 'ACTIVE' THEN u.id ELSE NULL END
+               FROM era_tester_users u
+               WHERE u.id = c.created_by
+             ),
+             last_run_id = COALESCE($1, c.last_run_id),
+             updated_at = NOW() 
+         WHERE c.id = $2`,
+        [activeRunId, caseId]
+      );
 
-        // Ghi nhận lịch sử kiểm thử (Audit Log)
-        await query(
-          `INSERT INTO era_tester_case_history 
-           (case_id, run_id, actor_name, action, from_status, to_status, note, git_commit_hash)
-           VALUES ($1, $2, $3, 'AUTO_GIT_VERIFY', $4, 'VERIFY', $5, $6)`,
-          [
-            caseId,
-            activeRunId,
-            authorName,
-            oldStatus,
-            `Dev đã đẩy commit sửa lỗi: ${commitMessage}`,
-            commitHash,
-          ]
-        );
-      }
+      // Ghi nhận lịch sử kiểm thử (Audit Log)
+      await query(
+        `INSERT INTO era_tester_case_history 
+         (case_id, run_id, actor_name, action, from_status, to_status, note, git_commit_hash)
+         VALUES ($1, $2, $3, 'AUTO_GIT_VERIFY', $4, 'VERIFY', $5, $6)`,
+        [
+          caseId,
+          activeRunId,
+          commit.authorName,
+          oldStatus,
+          `Dev đã đẩy commit sửa lỗi: ${commit.message}`,
+          commit.hash,
+        ]
+      );
     }
   }
 
@@ -258,5 +268,6 @@ export async function processGitPushImpact(payload: GitCommitPayload) {
     impactedModules,
     referencedCases: referencedCaseIds,
     activeRunId,
+    skippedCommits: payload.commits.length - relevantCommits.length,
   };
 }
