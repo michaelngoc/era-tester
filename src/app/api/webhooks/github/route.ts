@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { processGitPushImpact, type GitCommitInfo } from "@/lib/git-impact";
+import { verifyGithubSignature } from "@/lib/github-signature";
 
 interface GitHubCommit {
   id?: string;
@@ -12,7 +13,25 @@ interface GitHubCommit {
 
 export async function POST(req: NextRequest) {
   try {
-    const payload = await req.json();
+    const secret = process.env.GITHUB_WEBHOOK_SECRET;
+    if (!secret) {
+      return NextResponse.json({ error: "Webhook chưa cấu hình GITHUB_WEBHOOK_SECRET" }, { status: 503 });
+    }
+
+    const rawBody = await req.text();
+    if (!verifyGithubSignature(rawBody, req.headers.get("x-hub-signature-256"), secret)) {
+      return NextResponse.json({ error: "Chữ ký webhook không hợp lệ" }, { status: 401 });
+    }
+
+    const event = req.headers.get("x-github-event");
+    if (event === "ping") {
+      return NextResponse.json({ ok: true, message: "pong" });
+    }
+    if (event !== "push") {
+      return NextResponse.json({ ignored: true, message: `Bỏ qua event '${event}': chỉ nhận push` });
+    }
+
+    const payload = JSON.parse(rawBody);
 
     // Kiểm tra branch có phải là 'tester' hay không
     const ref = payload.ref || "";
