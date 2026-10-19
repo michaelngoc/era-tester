@@ -43,9 +43,12 @@ vi.mock("@/lib/db", () => ({
     if (s.includes("INSERT INTO era_tester_case_history")) return { rows: [] };
 
     if (s.includes("FROM era_tester_modules")) {
-      return {
-        rows: [{ id: 10, project_id: 1, name: "Auth", file_patterns: ["src/auth/**"], assigned_testers: [] }],
-      };
+      // Mô phỏng WHERE project_id = $1; không có điều kiện này thì trả module của mọi project.
+      const mods = [
+        { id: 10, project_id: 1, name: "Auth", file_patterns: ["src/auth/**"], assigned_testers: [] },
+        { id: 20, project_id: 2, name: "Other", file_patterns: ["src/auth/**"], assigned_testers: [] },
+      ];
+      return { rows: s.includes("project_id = $1") ? mods.filter((m) => m.project_id === params[0]) : mods };
     }
     // Đánh dấu Git Impact theo module.
     if (s.startsWith("UPDATE era_tester_cases SET is_impacted_by_git = TRUE")) {
@@ -145,5 +148,26 @@ describe("processGitPushImpact: module impact", () => {
     expect(res.impactedCount).toBe(1);
     expect(db.cases.find((c) => c.id === 5)!.impacted).toBe(true);
     expect(db.cases.find((c) => c.id === 7)!.impacted).toBe(false);
+  });
+
+  it("chỉ quét module của project đã xác định, không đụng case project khác", async () => {
+    await processGitPushImpact({
+      branch: "tester",
+      repoFullName: "era/manage",
+      commits: [commit("feat(auth): thêm đăng nhập", ["src/auth/login.ts"])],
+    });
+    expect(db.cases.find((c) => c.id === 6)!.impacted).toBe(false);
+  });
+
+  it("không xác định được project: không quét module nào, không đánh dấu case", async () => {
+    const res = await processGitPushImpact({
+      branch: "tester",
+      repoFullName: "other/unknown-repo",
+      commits: [commit("feat(auth): thêm đăng nhập", ["src/auth/login.ts"])],
+    });
+
+    expect(res.impactedCount).toBe(0);
+    expect(db.cases.every((c) => !c.impacted)).toBe(true);
+    expect(db.calls.some((c) => c.sql.includes("FROM era_tester_modules"))).toBe(false);
   });
 });
