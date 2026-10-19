@@ -165,21 +165,22 @@ export async function processGitPushImpact(payload: GitPushPayload) {
     }
   }
 
-  // 4. Fetch các modules để đối chiếu file patterns
-  let modulesSql = `SELECT id, project_id, name, file_patterns, assigned_testers FROM era_tester_modules`;
-  const modulesParams: any[] = [];
-  if (targetProjectId) {
-    modulesSql += ` WHERE project_id = $1`;
-    modulesParams.push(targetProjectId);
-  }
-
-  const modulesRes = await query<{
-    id: number;
-    project_id: number;
-    name: string;
-    file_patterns: string[];
-    assigned_testers: number[];
-  }>(modulesSql, modulesParams);
+  // 4. Fetch các modules của đúng project để đối chiếu file patterns.
+  // Không xác định được project thì không quét module nào (trước đây quét module của mọi project).
+  const modulesRes =
+    targetProjectId === null
+      ? { rows: [] }
+      : await query<{
+          id: number;
+          project_id: number;
+          name: string;
+          file_patterns: string[];
+          assigned_testers: number[];
+        }>(
+          `SELECT id, project_id, name, file_patterns, assigned_testers
+           FROM era_tester_modules WHERE project_id = $1`,
+          [targetProjectId]
+        );
 
   const impactedModules: Array<{
     id: number;
