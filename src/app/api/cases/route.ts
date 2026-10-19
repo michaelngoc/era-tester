@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { query } from "@/lib/db";
+import { parseCasePriority, parseCaseStatus } from "@/lib/case-validation";
 import { sendBugReportEmail, sendBroadcastBugToDevsEmail } from "@/lib/mailer";
 
 export async function GET(req: NextRequest) {
@@ -85,8 +86,12 @@ export async function POST(req: NextRequest) {
   const actualResult = data.actualResult ?? data.actual_result ?? "";
   const responsePayload = data.responsePayload ?? data.response_payload ?? "";
   const evidenceUrls = data.evidenceUrls ?? data.evidence_urls ?? [];
-  const status = data.status || "NEW";
-  const priority = data.priority || "MEDIUM";
+  const statusParsed = parseCaseStatus(data.status);
+  if (!statusParsed.ok) return NextResponse.json({ error: statusParsed.error }, { status: 400 });
+  const priorityParsed = parseCasePriority(data.priority);
+  if (!priorityParsed.ok) return NextResponse.json({ error: priorityParsed.error }, { status: 400 });
+  const status = statusParsed.value ?? "NEW";
+  const priority = priorityParsed.value ?? "MEDIUM";
   const assignedTo = data.assignedTo ?? data.assigned_to ?? null;
 
   if (!modId || !title || title.length < 3) {
