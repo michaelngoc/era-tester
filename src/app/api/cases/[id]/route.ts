@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { query } from "@/lib/db";
+import { parseCasePriority, parseCaseStatus, parseEvidenceUrls } from "@/lib/case-validation";
 import {
   sendBugReportEmail,
   sendBroadcastBugToDevsEmail,
@@ -83,6 +84,15 @@ export async function PATCH(
     }
   }
 
+  // Allowlist status / priority / evidence_urls (chuẩn hóa chữ hoa, từ chối giá trị lạ)
+  const statusParsed = parseCaseStatus(body.status);
+  if (!statusParsed.ok) return NextResponse.json({ error: statusParsed.error }, { status: 400 });
+  const priorityParsed = parseCasePriority(body.priority);
+  if (!priorityParsed.ok) return NextResponse.json({ error: priorityParsed.error }, { status: 400 });
+  const evidenceParsed = parseEvidenceUrls(body.evidenceUrls ?? body.evidence_urls);
+  if (!evidenceParsed.ok) return NextResponse.json({ error: evidenceParsed.error }, { status: 400 });
+  const incomingEvidence = evidenceParsed.value;
+
   // Chụp Snapshot phiên bản hiện tại trước khi update để phục vụ 1-Click Rollback
   const oldSnapshot = {
     title: prev.title,
@@ -98,7 +108,7 @@ export async function PATCH(
 
   // Xử lý các action nhận task đặc biệt
   let assignedTo = body.assignedTo ?? body.assigned_to;
-  let newStatus = body.status || prev.status;
+  let newStatus: string = statusParsed.value ?? prev.status;
   let actionName = "STATUS_CHANGE";
 
   if (body.action === "claim_bug") {
@@ -147,8 +157,9 @@ export async function PATCH(
          priority = COALESCE($8, priority),
          assigned_to = COALESCE($9, assigned_to),
          is_impacted_by_git = CASE WHEN $10::boolean THEN FALSE ELSE is_impacted_by_git END,
+         evidence_urls = COALESCE($11, evidence_urls),
          updated_at = NOW()
-     WHERE id = $11 AND (is_deleted IS NULL OR is_deleted = FALSE)
+     WHERE id = $12 AND (is_deleted IS NULL OR is_deleted = FALSE)
      RETURNING *`,
     [
       incomingTitle ? incomingTitle.trim() : null,
@@ -158,9 +169,10 @@ export async function PATCH(
       body.actualResult ?? body.actual_result,
       body.responsePayload ?? body.response_payload,
       newStatus,
-      body.priority,
+      priorityParsed.value,
       assignedTo,
       isResetGitFlag,
+      incomingEvidence ?? null,
       id,
     ]
   );
@@ -205,7 +217,7 @@ export async function PATCH(
           prev.status,
           newStatus,
           body.note || (body.action === "claim_bug" ? "Dev đã nhận xử lý bug" : hasContentChange ? "Cập nhật nội dung kịch bản kiểm thử" : null),
-          body.evidenceUrls || body.evidence_urls || null,
+          incomingEvidence ?? null,
           body.responsePayload ? JSON.stringify(body.responsePayload) : null,
           JSON.stringify(oldSnapshot),
         ]

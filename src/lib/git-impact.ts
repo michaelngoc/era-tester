@@ -29,6 +29,8 @@ export async function processGitPushImpact(payload: GitPushPayload) {
       impactedCount: 0,
       impactedModules: [],
       referencedCases: [] as number[],
+      movedCases: [] as number[],
+      skippedCases: [] as number[],
       activeRunId: null,
       skippedCommits: payload.commits.length,
     };
@@ -99,17 +101,36 @@ export async function processGitPushImpact(payload: GitPushPayload) {
   }
 
   // 3. Quét mã [#ID] / [case-ID] trong từng commit hợp lệ -> TỰ ĐỘNG CHUYỂN SANG VERIFY VÀ GHI AUDIT LOG
+  // Chỉ chuyển case thuộc project của repo đang push (module.project_id = targetProjectId).
+  // Không xác định được project, case không tồn tại, đã xóa mềm hoặc thuộc project khác -> bỏ qua và báo trong skippedCases.
   const referencedCaseIds: number[] = [];
+  const movedCaseIds: number[] = [];
+  const skippedCaseIds: number[] = [];
   for (const commit of relevantCommits) {
     for (const caseId of extractCaseIds(commit.message)) {
       if (!referencedCaseIds.includes(caseId)) referencedCaseIds.push(caseId);
 
+      if (targetProjectId === null) {
+        if (!skippedCaseIds.includes(caseId)) skippedCaseIds.push(caseId);
+        continue;
+      }
+
       const caseRes = await query<{ id: number; status: string }>(
-        `SELECT id, status FROM era_tester_cases WHERE id = $1 LIMIT 1`,
-        [caseId]
+        `SELECT c.id, c.status
+         FROM era_tester_cases c
+         JOIN era_tester_modules m ON m.id = c.module_id
+         WHERE c.id = $1
+           AND m.project_id = $2
+           AND (c.is_deleted IS NULL OR c.is_deleted = FALSE)
+         LIMIT 1`,
+        [caseId, targetProjectId]
       );
-      if (caseRes.rows.length === 0) continue;
+      if (caseRes.rows.length === 0) {
+        if (!skippedCaseIds.includes(caseId)) skippedCaseIds.push(caseId);
+        continue;
+      }
       const oldStatus = caseRes.rows[0].status;
+      if (!movedCaseIds.includes(caseId)) movedCaseIds.push(caseId);
 
       // Chuyển case sang VERIFY và gán cho Tester tạo kịch bản (nếu vẫn còn ACTIVE)
       await query(
@@ -194,7 +215,8 @@ export async function processGitPushImpact(payload: GitPushPayload) {
        SET is_impacted_by_git = TRUE, 
            last_run_id = COALESCE($1, last_run_id),
            updated_at = NOW() 
-       WHERE module_id = ANY($2::int[])`,
+       WHERE module_id = ANY($2::int[])
+         AND (is_deleted IS NULL OR is_deleted = FALSE)`,
       [activeRunId, moduleIds]
     );
 
@@ -205,7 +227,8 @@ export async function processGitPushImpact(payload: GitPushPayload) {
         await query(
           `UPDATE era_tester_cases 
            SET assigned_to = COALESCE(assigned_to, $1), updated_at = NOW()
-           WHERE module_id = $2 AND assigned_to IS NULL`,
+           WHERE module_id = $2 AND assigned_to IS NULL
+             AND (is_deleted IS NULL OR is_deleted = FALSE)`,
           [primaryTesterId, mod.id]
         );
       }
@@ -267,6 +290,8 @@ export async function processGitPushImpact(payload: GitPushPayload) {
     impactedCount: impactedModules.length,
     impactedModules,
     referencedCases: referencedCaseIds,
+    movedCases: movedCaseIds,
+    skippedCases: skippedCaseIds,
     activeRunId,
     skippedCommits: payload.commits.length - relevantCommits.length,
   };
