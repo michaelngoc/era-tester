@@ -1,0 +1,42 @@
+name: Auto Trigger Vercel Deploy
+
+# Vercel Hobby chỉ deploy commit do chủ tài khoản tạo.
+# Khi thành viên khác merge vào master, workflow đẩy 1 empty commit mang danh chủ để Vercel deploy.
+on:
+  push:
+    branches:
+      - master
+    paths-ignore:
+      - '**.md'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: trigger-vercel-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  auto-redeploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Auto-commit as Owner if pushed by Member
+        run: |
+          AUTHOR_EMAIL=$(git log -1 --pretty=format:'%ae')
+          echo "Latest commit author: $AUTHOR_EMAIL"
+
+          if [ "$AUTHOR_EMAIL" != "michael.baongoc@gmail.com" ]; then
+            echo "Commit authored by team member. Pushing empty commit as owner..."
+            git config user.name "michaelngoc"
+            git config user.email "michael.baongoc@gmail.com"
+            git commit --allow-empty -m "chore(ci): trigger vercel redeploy"
+            git push origin HEAD:${{ github.ref_name }}
+          else
+            echo "Commit already authored by owner. Skipping."
+          fi
