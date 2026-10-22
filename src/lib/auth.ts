@@ -1,9 +1,10 @@
 import "server-only";
 import { SignJWT, jwtVerify } from "jose";
+import { cache } from "react";
 import { cookies } from "next/headers";
 import bcrypt from "bcryptjs";
 import { query } from "./db";
-import { isGlobalAdminRole } from "./permissions";
+import { getGlobalAdminRoles } from "./permissions";
 
 const JWT_SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || "eraweb_tester_hub_jwt_super_secure_secret_2026"
@@ -63,7 +64,7 @@ export async function verifySessionToken(token: string): Promise<UserSession | n
   }
 }
 
-export async function getCurrentUser(): Promise<UserSession | null> {
+export const getCurrentUser = cache(async (): Promise<UserSession | null> => {
   const cookieStore = await cookies();
   const token = cookieStore.get("era_tester_session")?.value;
   if (!token) return null;
@@ -72,14 +73,18 @@ export async function getCurrentUser(): Promise<UserSession | null> {
   if (!session) return null;
 
   // Refresh latest status from database
-  const res = await query(
-    "SELECT id, email, full_name, role, status FROM era_tester_users WHERE id = $1 LIMIT 1",
-    [session.id]
-  );
+  // Roles toàn quyền không phụ thuộc user nên chạy song song với query user
+  const [res, globalAdminRoles] = await Promise.all([
+    query(
+      "SELECT id, email, full_name, role, status FROM era_tester_users WHERE id = $1 LIMIT 1",
+      [session.id]
+    ),
+    getGlobalAdminRoles(),
+  ]);
   if (res.rows.length === 0) return null;
 
   const row = res.rows[0];
-  const isGlobal = await isGlobalAdminRole(row.role);
+  const isGlobal = row.role === "SUPER_ADMIN" || globalAdminRoles.includes(row.role);
 
   return {
     id: row.id,
@@ -89,4 +94,4 @@ export async function getCurrentUser(): Promise<UserSession | null> {
     status: row.status,
     isGlobalAdmin: isGlobal,
   };
-}
+});

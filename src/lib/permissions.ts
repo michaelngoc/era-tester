@@ -82,25 +82,58 @@ export const ALL_SYSTEM_ROLES: RoleDefinition[] = [
 
 export const DEFAULT_GLOBAL_ADMIN_ROLES: UserRole[] = ["SUPER_ADMIN"];
 
+const GLOBAL_ADMIN_ROLES_TTL_MS = 60_000;
+
+let globalAdminRolesCache: { roles: UserRole[]; expiresAt: number } | null = null;
+let globalAdminRolesInflight: Promise<UserRole[]> | null = null;
+
+/** Chỉ dùng cho test: xoá cache vai trò toàn quyền trong bộ nhớ. */
+export function __resetGlobalAdminRolesCache(): void {
+  globalAdminRolesCache = null;
+  globalAdminRolesInflight = null;
+}
+
+async function fetchGlobalAdminRoles(): Promise<UserRole[]> {
+  const res = await query(
+    "SELECT value FROM era_tester_settings WHERE key = 'global_admin_roles' LIMIT 1"
+  );
+  if (res.rows.length > 0 && Array.isArray(res.rows[0].value)) {
+    const roles = [...(res.rows[0].value as UserRole[])];
+    if (!roles.includes("SUPER_ADMIN")) {
+      roles.unshift("SUPER_ADMIN");
+    }
+    return roles;
+  }
+  return [...DEFAULT_GLOBAL_ADMIN_ROLES];
+}
+
 /**
- * Lấy danh sách các vai trò có toàn quyền quản trị như Super Admin từ cơ sở dữ liệu
+ * Lấy danh sách các vai trò có toàn quyền quản trị như Super Admin từ cơ sở dữ liệu.
+ * Cache trong bộ nhớ 60 giây; request đồng thời dùng chung một query. Lỗi DB trả mặc định, không cache.
  */
 export async function getGlobalAdminRoles(): Promise<UserRole[]> {
-  try {
-    const res = await query(
-      "SELECT value FROM era_tester_settings WHERE key = 'global_admin_roles' LIMIT 1"
-    );
-    if (res.rows.length > 0 && Array.isArray(res.rows[0].value)) {
-      const roles = res.rows[0].value as UserRole[];
-      if (!roles.includes("SUPER_ADMIN")) {
-        roles.unshift("SUPER_ADMIN");
-      }
-      return roles;
-    }
-  } catch (error) {
-    console.error("[Permissions] Failed to fetch global_admin_roles:", error);
+  if (globalAdminRolesCache && globalAdminRolesCache.expiresAt > Date.now()) {
+    return [...globalAdminRolesCache.roles];
   }
-  return DEFAULT_GLOBAL_ADMIN_ROLES;
+  if (!globalAdminRolesInflight) {
+    const inflight: Promise<UserRole[]> = fetchGlobalAdminRoles()
+      .then((roles) => {
+        // Bỏ qua nếu cache đã bị reset/ghi đè (vd update) trong lúc query đang bay
+        if (globalAdminRolesInflight === inflight) {
+          globalAdminRolesCache = { roles, expiresAt: Date.now() + GLOBAL_ADMIN_ROLES_TTL_MS };
+        }
+        return roles;
+      })
+      .catch((error) => {
+        console.error("[Permissions] Failed to fetch global_admin_roles:", error);
+        return [...DEFAULT_GLOBAL_ADMIN_ROLES];
+      })
+      .finally(() => {
+        if (globalAdminRolesInflight === inflight) globalAdminRolesInflight = null;
+      });
+    globalAdminRolesInflight = inflight;
+  }
+  return [...(await globalAdminRolesInflight)];
 }
 
 /**
@@ -130,6 +163,12 @@ export async function updateGlobalAdminRoles(
      SET value = EXCLUDED.value, updated_at = NOW(), updated_by = EXCLUDED.updated_by`,
     [JSON.stringify(sanitizedRoles), updatedByUserId || null]
   );
+
+  globalAdminRolesInflight = null;
+  globalAdminRolesCache = {
+    roles: [...sanitizedRoles],
+    expiresAt: Date.now() + GLOBAL_ADMIN_ROLES_TTL_MS,
+  };
 
   return sanitizedRoles;
 }

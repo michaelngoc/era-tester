@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { query } from "@/lib/db";
+import { getModulesForUser } from "@/lib/server-queries";
 
 export async function GET(req: NextRequest) {
   const user = await getCurrentUser();
@@ -12,59 +13,8 @@ export async function GET(req: NextRequest) {
   const projectId = searchParams.get("projectId");
   const projectSlug = searchParams.get("projectSlug");
 
-  const isGlobalAdmin = user.isGlobalAdmin;
-
-  let sql = `
-    SELECT m.*, 
-           p.name AS project_name, p.slug AS project_slug,
-           COUNT(c.id) AS total_cases,
-           COUNT(CASE WHEN c.status = 'NEW' THEN 1 END) AS count_new,
-           COUNT(CASE WHEN c.status = 'FIX' THEN 1 END) AS count_fix,
-           COUNT(CASE WHEN c.status = 'VERIFY' THEN 1 END) AS count_verify,
-           COUNT(CASE WHEN c.status = 'DEPLOY' THEN 1 END) AS count_deploy,
-           COUNT(CASE WHEN c.status = 'CLOSED' THEN 1 END) AS count_closed,
-           COUNT(CASE WHEN c.is_impacted_by_git = TRUE THEN 1 END) AS count_git_impacted,
-           COALESCE(
-             (
-               SELECT json_agg(json_build_object('id', u.id, 'name', u.full_name, 'email', u.email))
-               FROM era_tester_users u
-               WHERE u.id = ANY(m.assigned_testers)
-             ),
-             '[]'::json
-           ) AS assigned_tester_users,
-           COALESCE(
-             (
-               SELECT json_agg(json_build_object('id', f.id, 'title', f.title))
-               FROM era_tester_flows f
-               WHERE f.module_id = m.id AND (f.is_deleted IS NULL OR f.is_deleted = FALSE)
-             ),
-             '[]'::json
-           ) AS flows
-    FROM era_tester_modules m
-    JOIN era_tester_projects p ON p.id = m.project_id
-    LEFT JOIN era_tester_cases c ON c.module_id = m.id AND (c.is_deleted IS NULL OR c.is_deleted = FALSE)
-    WHERE (m.is_deleted IS NULL OR m.is_deleted = FALSE) 
-      AND (p.is_deleted IS NULL OR p.is_deleted = FALSE)
-  `;
-  const params: any[] = [];
-
-  if (!isGlobalAdmin) {
-    params.push(user.id);
-    sql += ` AND p.id IN (SELECT project_id FROM era_tester_project_members WHERE user_id = $${params.length}) `;
-  }
-
-  if (projectId) {
-    params.push(projectId);
-    sql += ` AND m.project_id = $${params.length}`;
-  } else if (projectSlug) {
-    params.push(projectSlug);
-    sql += ` AND p.slug = $${params.length}`;
-  }
-
-  sql += ` GROUP BY m.id, p.name, p.slug ORDER BY COALESCE(m.sort_order, 0) ASC, m.id ASC`;
-
-  const res = await query(sql, params);
-  return NextResponse.json({ modules: res.rows });
+  const modules = await getModulesForUser(user, { projectId, projectSlug });
+  return NextResponse.json({ modules });
 }
 
 export async function POST(req: NextRequest) {

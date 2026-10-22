@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { query } from "@/lib/db";
+import { getCasesForUser } from "@/lib/server-queries";
 import { parseCasePriority, parseCaseStatus } from "@/lib/case-validation";
 import { sendBugReportEmail, sendBroadcastBugToDevsEmail } from "@/lib/mailer";
 
@@ -16,50 +17,8 @@ export async function GET(req: NextRequest) {
   const flowId = searchParams.get("flowId");
   const status = searchParams.get("status");
 
-  const isGlobalAdmin = user.isGlobalAdmin;
-
-  let sql = `
-    SELECT c.*, 
-           m.name AS module_name,
-           m.project_id,
-           COALESCE(NULLIF(u_assigned.full_name, ''), u_assigned.email) AS assigned_name, 
-           u_assigned.email AS assigned_email,
-           COALESCE(NULLIF(u_creator.full_name, ''), u_creator.email) AS creator_name
-    FROM era_tester_cases c
-    JOIN era_tester_modules m ON m.id = c.module_id
-    LEFT JOIN era_tester_users u_assigned ON u_assigned.id = c.assigned_to
-    LEFT JOIN era_tester_users u_creator ON u_creator.id = c.created_by
-    WHERE (c.is_deleted IS NULL OR c.is_deleted = FALSE)
-      AND (m.is_deleted IS NULL OR m.is_deleted = FALSE)
-  `;
-  const params: any[] = [];
-
-  if (!isGlobalAdmin) {
-    params.push(user.id);
-    sql += ` AND m.project_id IN (SELECT project_id FROM era_tester_project_members WHERE user_id = $${params.length}) `;
-  }
-
-  if (projectId) {
-    params.push(projectId);
-    sql += ` AND m.project_id = $${params.length}`;
-  }
-  if (moduleId) {
-    params.push(moduleId);
-    sql += ` AND c.module_id = $${params.length}`;
-  }
-  if (flowId) {
-    params.push(flowId);
-    sql += ` AND c.flow_id = $${params.length}`;
-  }
-  if (status) {
-    params.push(status);
-    sql += ` AND c.status = $${params.length}`;
-  }
-
-  sql += ` ORDER BY c.id DESC`;
-
-  const res = await query(sql, params);
-  return NextResponse.json({ cases: res.rows });
+  const cases = await getCasesForUser(user, { projectId, moduleId, flowId, status });
+  return NextResponse.json({ cases });
 }
 
 export async function POST(req: NextRequest) {

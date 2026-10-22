@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { TestCase } from "@/components/CaseDetailModal";
 import StepChecklistDrawer from "@/components/StepChecklistDrawer";
 import CaseDetailModal from "@/components/CaseDetailModal";
@@ -19,12 +19,18 @@ export interface DashboardClientProps {
   currentUser: any;
   initialProjects: any[];
   availableTesters: any[];
+  /** Modules của project đầu tiên, SSR tải sẵn (null = để client tự fetch). */
+  initialModules?: any[] | null;
+  /** Flows + cases của module đầu tiên, SSR tải sẵn (null = để client tự fetch). */
+  initialWorkspace?: { moduleId: number; flows: any[]; cases: any[] } | null;
 }
 
 export default function DashboardClient({
   currentUser,
   initialProjects,
   availableTesters,
+  initialModules = null,
+  initialWorkspace = null,
 }: DashboardClientProps) {
   const { toast, confirm } = useToast();
 
@@ -43,8 +49,15 @@ export default function DashboardClient({
   }>({ open: false, mode: "create" });
 
   // Modules state
-  const [modules, setModules] = useState<any[]>([]);
-  const [selectedModule, setSelectedModule] = useState<any>(null);
+  const [modules, setModules] = useState<any[]>(initialModules ?? []);
+  const [selectedModule, setSelectedModule] = useState<any>(
+    initialWorkspace ? initialModules?.find((m) => m.id === initialWorkspace.moduleId) ?? null : null
+  );
+  // Id đã được SSR tải sẵn: effect lần đầu bỏ qua đúng id này rồi xoá ref; sau đó luôn fetch như cũ.
+  const preloadedProjectId = useRef<number | null>(
+    initialModules && initialProjects.length > 0 ? initialProjects[0].id : null
+  );
+  const preloadedModuleId = useRef<number | null>(initialWorkspace?.moduleId ?? null);
   const [moduleModal, setModuleModal] = useState<{
     open: boolean;
     mode: "create" | "edit";
@@ -52,15 +65,15 @@ export default function DashboardClient({
   }>({ open: false, mode: "create" });
 
   // Flows state
-  const [flows, setFlows] = useState<any[]>([]);
-  const [selectedFlow, setSelectedFlow] = useState<any>(null);
+  const [flows, setFlows] = useState<any[]>(initialWorkspace?.flows ?? []);
+  const [selectedFlow, setSelectedFlow] = useState<any>(initialWorkspace?.flows[0] ?? null);
   const [flowModal, setFlowModal] = useState<{
     open: boolean;
     title: string;
   }>({ open: false, title: "" });
 
   // Cases state
-  const [cases, setCases] = useState<TestCase[]>([]);
+  const [cases, setCases] = useState<TestCase[]>(initialWorkspace?.cases ?? []);
   const [selectedCase, setSelectedCase] = useState<TestCase | null>(null);
   const [selectedStep, setSelectedStep] = useState<{
     id: string;
@@ -121,25 +134,20 @@ export default function DashboardClient({
   const fetchFlowsAndCases = useCallback(async (modId: number) => {
     setLoading(true);
     try {
-      const [flowsRes, casesRes] = await Promise.all([
-        fetch(`/api/flows?moduleId=${modId}`),
-        fetch(`/api/cases?moduleId=${modId}`),
-      ]);
+      const res = await fetch(`/api/modules/${modId}/workspace`);
+      const data = await res.json();
 
-      const flowsData = await flowsRes.json();
-      const casesData = await casesRes.json();
-
-      if (flowsData?.flows) {
-        setFlows(flowsData.flows);
-        if (flowsData.flows.length > 0) {
-          setSelectedFlow(flowsData.flows[0]);
+      if (data?.flows) {
+        setFlows(data.flows);
+        if (data.flows.length > 0) {
+          setSelectedFlow(data.flows[0]);
         } else {
           setSelectedFlow(null);
         }
       }
 
-      if (casesData?.cases) {
-        setCases(casesData.cases);
+      if (data?.cases) {
+        setCases(data.cases);
       } else {
         setCases([]);
       }
@@ -152,16 +160,19 @@ export default function DashboardClient({
 
   // Trigger loading modules when selectedProject changes
   useEffect(() => {
-    if (selectedProject?.id) {
-      fetchModules(selectedProject.id);
-    }
+    // Ref chỉ dùng một lần (lần mount đầu); mọi lần chọn sau đều fetch như cũ.
+    const skip = preloadedProjectId.current !== null && preloadedProjectId.current === selectedProject?.id;
+    preloadedProjectId.current = null;
+    if (skip || !selectedProject?.id) return;
+    fetchModules(selectedProject.id);
   }, [selectedProject, fetchModules]);
 
   // Trigger loading flows & cases when selectedModule changes
   useEffect(() => {
-    if (selectedModule?.id) {
-      fetchFlowsAndCases(selectedModule.id);
-    }
+    const skip = preloadedModuleId.current !== null && preloadedModuleId.current === selectedModule?.id;
+    preloadedModuleId.current = null;
+    if (skip || !selectedModule?.id) return;
+    fetchFlowsAndCases(selectedModule.id);
   }, [selectedModule, fetchFlowsAndCases]);
 
   // Project handlers

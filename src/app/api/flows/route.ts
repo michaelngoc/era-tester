@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { query } from "@/lib/db";
+import { getFlowsForModule } from "@/lib/server-queries";
 
 export async function GET(req: NextRequest) {
   const user = await getCurrentUser();
@@ -15,20 +16,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Thiếu moduleId" }, { status: 400 });
   }
 
-  const res = await query(
-    `SELECT f.*, 
-            COUNT(c.id) AS total_cases,
-            COUNT(CASE WHEN c.status = 'NEW' THEN 1 END) AS count_new,
-            COUNT(CASE WHEN c.status = 'CLOSED' THEN 1 END) AS count_closed
-     FROM era_tester_flows f
-     LEFT JOIN era_tester_cases c ON c.flow_id = f.id AND (c.is_deleted IS NULL OR c.is_deleted = FALSE)
-     WHERE f.module_id = $1 AND (f.is_deleted IS NULL OR f.is_deleted = FALSE)
-     GROUP BY f.id
-     ORDER BY f.id ASC`,
-    [moduleId]
-  );
-
-  return NextResponse.json({ flows: res.rows });
+  const flows = await getFlowsForModule(moduleId);
+  return NextResponse.json({ flows });
 }
 
 export async function POST(req: NextRequest) {
