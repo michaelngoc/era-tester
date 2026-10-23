@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { query } from "@/lib/db";
+import { userCanAccessProject, forbiddenProjectResponse, guardProjectOf } from "@/lib/project-access";
 import { parseCasePriority, parseCaseStatus, parseEvidenceUrls } from "@/lib/case-validation";
 import {
   sendBugReportEmail,
@@ -44,6 +45,8 @@ export async function PATCH(
   }
 
   const prev = currentCaseRes.rows[0];
+
+  if (!(await userCanAccessProject(user, prev.project_id))) return forbiddenProjectResponse();
 
   // RBAC & Guardrail: Chống phá hoại và xóa trắng nội dung
   const isDev = user.role === "DEVELOPER";
@@ -407,6 +410,8 @@ export async function DELETE(
   }
 
   const { id } = await params;
+  const denied = await guardProjectOf(user, "case", id);
+  if (denied) return denied;
 
   const caseRes = await query(
     "SELECT id, created_by, title FROM era_tester_cases WHERE id = $1 AND (is_deleted IS NULL OR is_deleted = FALSE)",

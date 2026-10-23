@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { query } from "@/lib/db";
+import { guardProjectOf } from "@/lib/project-access";
 import { getFlowsForModule } from "@/lib/server-queries";
 
 export async function GET(req: NextRequest) {
@@ -15,6 +16,9 @@ export async function GET(req: NextRequest) {
   if (!moduleId) {
     return NextResponse.json({ error: "Thiếu moduleId" }, { status: 400 });
   }
+
+  const denied = await guardProjectOf(user, "module", moduleId);
+  if (denied) return denied;
 
   const flows = await getFlowsForModule(moduleId);
   return NextResponse.json({ flows });
@@ -38,6 +42,9 @@ export async function POST(req: NextRequest) {
   if (!moduleId || !title || typeof title !== "string" || title.trim().length < 2) {
     return NextResponse.json({ error: "Tiêu đề User Flow phải có ít nhất 2 ký tự" }, { status: 400 });
   }
+
+  const denied = await guardProjectOf(user, "module", moduleId);
+  if (denied) return denied;
 
   let initialNodes: any[] = [];
   let initialEdges: any[] = [];

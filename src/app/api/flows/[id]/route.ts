@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { query } from "@/lib/db";
+import { guardProjectOf } from "@/lib/project-access";
 
 export async function GET(
   req: NextRequest,
@@ -12,6 +13,9 @@ export async function GET(
   }
 
   const { id } = await params;
+  const denied = await guardProjectOf(user, "flow", id);
+  if (denied) return denied;
+
   const res = await query(
     "SELECT * FROM era_tester_flows WHERE id = $1 AND (is_deleted IS NULL OR is_deleted = FALSE)",
     [id]
@@ -41,6 +45,9 @@ export async function PUT(
   }
 
   const { id } = await params;
+  const denied = await guardProjectOf(user, "flow", id);
+  if (denied) return denied;
+
   const { nodes, edges, title, nodeRemap } = await req.json();
 
   if (title !== undefined && (typeof title !== "string" || title.trim().length < 2)) {

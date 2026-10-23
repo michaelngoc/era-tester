@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { query } from "@/lib/db";
+import { forbiddenProjectResponse } from "@/lib/project-access";
 
 export async function PUT(req: NextRequest) {
   const user = await getCurrentUser();
@@ -16,6 +17,16 @@ export async function PUT(req: NextRequest) {
       { error: "Danh sách orderedIds không hợp lệ" },
       { status: 400 }
     );
+  }
+
+  if (!user.isGlobalAdmin) {
+    const ids = orderedIds.map(Number).filter(Boolean);
+    const allowed = await query(
+      `SELECT COUNT(*)::int AS n FROM era_tester_modules
+       WHERE id = ANY($1::int[]) AND project_id IN (SELECT project_id FROM era_tester_project_members WHERE user_id = $2)`,
+      [ids, user.id]
+    );
+    if (allowed.rows[0].n !== new Set(ids).size) return forbiddenProjectResponse();
   }
 
   try {
