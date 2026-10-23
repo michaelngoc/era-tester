@@ -5,10 +5,21 @@ import { cookies } from "next/headers";
 import bcrypt from "bcryptjs";
 import { query } from "./db";
 import { getGlobalAdminRoles } from "./permissions";
+import { isLegacyJwtSecret } from "./known-default-secrets";
 
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || "eraweb_tester_hub_jwt_super_secure_secret_2026"
-);
+const MIN_JWT_SECRET_BYTES = 32;
+
+// Fail closed: không có giá trị mặc định; đọc lười để `next build` không ném khi thiếu env.
+export function getJwtSecret(): Uint8Array {
+  const raw = process.env.JWT_SECRET;
+  if (!raw || Buffer.byteLength(raw) < MIN_JWT_SECRET_BYTES) {
+    throw new Error(`JWT_SECRET là bắt buộc và phải dài tối thiểu ${MIN_JWT_SECRET_BYTES} byte`);
+  }
+  if (isLegacyJwtSecret(raw)) {
+    throw new Error("JWT_SECRET đang dùng giá trị mặc định cũ đã lộ trong mã nguồn; hãy xoay sang secret mới");
+  }
+  return new TextEncoder().encode(raw);
+}
 
 export type UserRole =
   | "SUPER_ADMIN"
@@ -52,12 +63,13 @@ export async function createSessionToken(user: UserSession): Promise<string> {
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("7d")
-    .sign(JWT_SECRET);
+    .sign(getJwtSecret());
 }
 
 export async function verifySessionToken(token: string): Promise<UserSession | null> {
+  const secret = getJwtSecret(); // thiếu/ngắn thì ném lỗi, không nuốt thành "chưa đăng nhập"
   try {
-    const { payload } = await jwtVerify(token, JWT_SECRET);
+    const { payload } = await jwtVerify(token, secret);
     return payload as unknown as UserSession;
   } catch {
     return null;

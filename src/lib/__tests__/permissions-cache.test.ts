@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
+process.env.JWT_SECRET = "test_jwt_secret_at_least_32_bytes_long";
+
 const queryMock = vi.fn();
 vi.mock("@/lib/db", () => ({ query: (...args: unknown[]) => queryMock(...args) }));
 vi.mock("../db", () => ({ query: (...args: unknown[]) => queryMock(...args) }));

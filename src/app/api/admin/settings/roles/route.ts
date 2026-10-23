@@ -45,6 +45,11 @@ export async function POST(req: Request) {
       );
     }
 
+    const validRoles = ALL_SYSTEM_ROLES.map((r) => r.role as string);
+    if (!roles.every((r: unknown) => typeof r === "string" && validRoles.includes(r))) {
+      return NextResponse.json({ error: "Danh sách vai trò chứa giá trị không hợp lệ." }, { status: 400 });
+    }
+
     const updatedRoles = await updateGlobalAdminRoles(
       roles as UserRole[],
       currentUser.id

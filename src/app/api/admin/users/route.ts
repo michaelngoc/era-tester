@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { sendAccountApprovedEmail } from "@/lib/mailer";
+import { ALL_SYSTEM_ROLES } from "@/lib/permissions";
+
+const VALID_STATUSES = ["PENDING", "ACTIVE", "BANNED", "INACTIVE"];
 
 export async function GET() {
   const currentUser = await getCurrentUser();
@@ -28,6 +31,13 @@ export async function PATCH(req: NextRequest) {
 
   if (!userId) {
     return NextResponse.json({ error: "Thiếu userId" }, { status: 400 });
+  }
+
+  if (status != null && !VALID_STATUSES.includes(status)) {
+    return NextResponse.json({ error: "status không hợp lệ" }, { status: 400 });
+  }
+  if (role != null && !ALL_SYSTEM_ROLES.some((r) => r.role === role)) {
+    return NextResponse.json({ error: "role không hợp lệ" }, { status: 400 });
   }
 
   const userRes = await query("SELECT email, full_name FROM era_tester_users WHERE id = $1", [
