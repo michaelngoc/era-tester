@@ -6,7 +6,7 @@
 
 - **Kiến trúc Next.js 16 & React 19:** Tốc độ cao, Turbopack, Server Actions.
 - **Sơ đồ mô phỏng tương tác (React Flow):** Trực quan hóa các bước kiểm thử theo dạng Node liên kết mượt mà với trạng thái màu sắc (`Passed`, `Bug`, `Fixing`, `Verifying`, `Git Change`).
-- **Bảng Kanban theo dõi Bug:** Kéo thả trực quan 4 cột: `NEW` ➔ `FIX` ➔ `VERIFY` ➔ `CLOSED`.
+- **Bảng Kanban theo dõi Bug:** Kéo thả trực quan 5 cột: `NEW` ➔ `FIX` ➔ `VERIFY` ➔ `DEPLOY` ➔ `CLOSED`.
 - **Tự động nhận diện Git Push:** GitHub Webhook bắt sự kiện push vào nhánh `tester`, đối chiếu `file_patterns` của module và gắn cờ cảnh báo re-test tự động.
 - **Hệ thống Email thông báo:** Tích hợp AWS SES thông báo cho Dev khi có Bug mới và báo cho Tester khi code thay đổi hoặc bug đã fix.
 - **Upload bằng chứng lỗi:** Tải ảnh/video screenshot lỗi trực tiếp lên AWS S3.

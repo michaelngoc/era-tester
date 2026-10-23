@@ -1,4 +1,5 @@
 import React from "react";
+import pkg from "../../package.json";
 import Link from "next/link";
 import {
   ShieldCheck,
@@ -51,7 +52,7 @@ export default function Navbar({ user }: NavbarProps) {
                 Eraweb Tester Hub
               </span>
               <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-sky-500/15 text-sky-600 dark:text-sky-300 border border-sky-500/30">
-                v1.3
+                v{pkg.version}
               </span>
             </div>
             <span className="block text-[10.5px] text-slate-500 dark:text-slate-400 uppercase tracking-wider font-medium">

@@ -25,13 +25,19 @@ const pool = new Pool({
 });
 
 async function syncLoginFlowWithRealCode() {
+  // Script xoá toàn bộ case của flow: bắt buộc chỉ định flow rõ ràng và xác nhận.
+  const flowArg = process.argv.find(a => a.startsWith('--flow-id='));
+  const flowIdArg = flowArg ? Number(flowArg.split('=')[1]) : NaN;
+  if (!Number.isInteger(flowIdArg) || flowIdArg <= 0 || !process.argv.includes('--yes')) {
+    throw new Error('Cần chạy: node scripts/update_login_flow.cjs --flow-id=<id> --yes (script xoá mọi case của flow đó)');
+  }
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
 
-    const flowRes = await client.query("SELECT id, module_id FROM era_tester_flows WHERE id = 1 LIMIT 1");
+    const flowRes = await client.query("SELECT id, module_id FROM era_tester_flows WHERE id = $1 LIMIT 1", [flowIdArg]);
     if (flowRes.rows.length === 0) {
-      throw new Error("Không tìm thấy Flow 1!");
+      throw new Error(`Không tìm thấy Flow ${flowIdArg}!`);
     }
     const flowId = flowRes.rows[0].id;
     const moduleId = flowRes.rows[0].module_id;
