@@ -80,7 +80,7 @@ export async function sendGitPushImpactEmail({
 }) {
   if (recipients.length === 0) return;
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3005";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3008";
   const shortHash = commitHash.slice(0, 7);
 
   const modulesHtml = impactedModules
@@ -145,7 +145,7 @@ export async function sendBugReportEmail({
   actualResult?: string;
   caseId: number;
 }) {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3005";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3008";
   const html = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #fee2e2; border-radius: 12px; background: #ffffff;">
       <h2 style="color: #dc2626; margin-top: 0;">🐞 Báo Cáo Lỗi Mới (Bug Detected)</h2>
@@ -176,7 +176,7 @@ export async function sendBugReportEmail({
  * Gửi email khi tài khoản được Super Admin duyệt
  */
 export async function sendAccountApprovedEmail(userEmail: string, userName: string) {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3005";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3008";
   const html = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 500px; margin: 0 auto; padding: 24px; border: 1px solid #dcfce7; border-radius: 12px; background: #ffffff;">
       <h2 style="color: #16a34a; margin-top: 0;">🎉 Tài khoản đã được phê duyệt!</h2>
@@ -219,7 +219,7 @@ export async function sendBroadcastBugToDevsEmail({
 }) {
   if (devEmails.length === 0) return;
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3005";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3008";
   const html = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #fee2e2; border-radius: 12px; background: #ffffff;">
       <h2 style="color: #dc2626; margin-top: 0;">🐞 Bug Mới Cần Xử Lý (Open for Devs)</h2>
@@ -265,7 +265,7 @@ export async function sendBugClaimedEmail({
   moduleName: string;
   caseId: number;
 }) {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3005";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3008";
   const html = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 500px; margin: 0 auto; padding: 24px; border: 1px solid #e0e7ff; border-radius: 12px; background: #ffffff;">
       <h2 style="color: #4f46e5; margin-top: 0;">🛠️ Developer Đã Nhận Sửa Bug</h2>
