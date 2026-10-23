@@ -30,22 +30,28 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Email này đã được đăng ký" }, { status: 400 });
     }
 
-    // Kiểm tra xem có phải tài khoản đầu tiên hoặc email admin cấu hình sẵn
+    // Tài khoản đầu tiên của DB rỗng là bootstrap. ADMIN_INITIAL_EMAIL chỉ có hiệu lực khi được đặt
+    // VÀ chưa tồn tại SUPER_ADMIN nào; tài khoản đó vẫn PENDING trừ khi ADMIN_INITIAL_AUTO_ACTIVATE="true"
+    // (người đăng ký đầu tiên không tự chiếm quyền cao nhất chỉ bằng đoán email).
     const totalUsers = await query("SELECT COUNT(*) FROM era_tester_users");
-    const count = parseInt(totalUsers.rows[0].count, 10);
-    const isFirstUser = count === 0;
-    const isInitialAdmin = cleanEmail === (process.env.ADMIN_INITIAL_EMAIL || "admin@eragroup.com.vn").toLowerCase();
+    const isFirstUser = parseInt(totalUsers.rows[0].count, 10) === 0;
+
+    const initialAdminEmail = process.env.ADMIN_INITIAL_EMAIL?.trim().toLowerCase();
+    let isInitialAdmin = false;
+    if (!isFirstUser && initialAdminEmail && cleanEmail === initialAdminEmail) {
+      const superAdmins = await query("SELECT 1 FROM era_tester_users WHERE role = 'SUPER_ADMIN' LIMIT 1");
+      isInitialAdmin = superAdmins.rows.length === 0;
+    }
 
     let role = "TESTER";
     if (isFirstUser || isInitialAdmin) {
       role = "SUPER_ADMIN";
     } else if (requestedRole === "DEVELOPER") {
       role = "DEVELOPER";
-    } else {
-      role = "TESTER";
     }
 
-    const status = isFirstUser || isInitialAdmin ? "ACTIVE" : "PENDING";
+    const autoActivate = isFirstUser || (isInitialAdmin && process.env.ADMIN_INITIAL_AUTO_ACTIVATE === "true");
+    const status = autoActivate ? "ACTIVE" : "PENDING";
 
     const hashedPassword = await hashPassword(password);
 
