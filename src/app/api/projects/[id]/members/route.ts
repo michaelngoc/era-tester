@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { query } from "@/lib/db";
+import { guardProject } from "@/lib/project-access";
 
 export async function GET(
   _req: NextRequest,
@@ -13,6 +14,9 @@ export async function GET(
 
   const { id } = await params;
   const projectId = Number(id);
+  const denied = await guardProject(user, projectId);
+  if (denied) return denied;
+
 
   const res = await query(
     `SELECT pm.id as membership_id,
@@ -50,6 +54,9 @@ export async function POST(
 
   const { id } = await params;
   const projectId = Number(id);
+  const denied = await guardProject(user, projectId);
+  if (denied) return denied;
+
   const { userId, projectRole } = await req.json();
 
   if (!userId) {
@@ -85,6 +92,9 @@ export async function DELETE(
 
   const { id } = await params;
   const projectId = Number(id);
+  const denied = await guardProject(user, projectId);
+  if (denied) return denied;
+
   const { searchParams } = new URL(req.url);
   const userId = searchParams.get("userId");
 

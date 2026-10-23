@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { query } from "@/lib/db";
+import { guardProjectOf } from "@/lib/project-access";
 
 export async function GET(
   _req: NextRequest,
@@ -12,6 +13,9 @@ export async function GET(
   }
 
   const { id } = await params;
+  const denied = await guardProjectOf(user, "run", id);
+  if (denied) return denied;
+
 
   try {
     const runRes = await query(
@@ -56,6 +60,9 @@ export async function PATCH(
   }
 
   const { id } = await params;
+  const denied = await guardProjectOf(user, "run", id);
+  if (denied) return denied;
+
   const body = await req.json();
 
   try {

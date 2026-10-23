@@ -34,6 +34,8 @@ vi.mock("@/lib/db", () => ({
   query: vi.fn(async (sql: string, params: any[] = []) => {
     state.calls.push({ sql, params });
     const s = sql.replace(/\s+/g, " ");
+    if (s.startsWith("SELECT m.project_id FROM era_tester_modules m")) return { rows: [{ project_id: 1 }] };
+    if (s.includes("FROM era_tester_project_members WHERE project_id")) return { rows: [{ "?column?": 1 }] };
     if (s.includes("JOIN era_tester_projects p")) return { rows: [state.prev] };
     if (s.startsWith("UPDATE era_tester_cases SET title")) return { rows: [{ ...state.prev }] };
     if (s.startsWith("INSERT INTO era_tester_cases")) return { rows: [{ id: 50, title: params[3] }] };

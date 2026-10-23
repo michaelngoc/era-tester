@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { query } from "@/lib/db";
+import { guardProjectOf } from "@/lib/project-access";
 import { getCasesForUser } from "@/lib/server-queries";
 import { parseCasePriority, parseCaseStatus } from "@/lib/case-validation";
 import { sendBugReportEmail, sendBroadcastBugToDevsEmail } from "@/lib/mailer";
@@ -59,6 +60,9 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     );
   }
+
+  const denied = await guardProjectOf(user, "module", modId);
+  if (denied) return denied;
 
   const finalExpected = expectedResult || "Hoạt động chính xác theo yêu cầu kịch bản";
 

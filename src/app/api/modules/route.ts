@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { query } from "@/lib/db";
+import { guardProject } from "@/lib/project-access";
 import { getModulesForUser } from "@/lib/server-queries";
 
 export async function GET(req: NextRequest) {
@@ -38,6 +39,9 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     );
   }
+
+  const denied = await guardProject(user, projectId);
+  if (denied) return denied;
 
   const patterns = Array.isArray(filePatterns)
     ? filePatterns

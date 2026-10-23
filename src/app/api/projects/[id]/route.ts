@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { query } from "@/lib/db";
+import { guardProject } from "@/lib/project-access";
 
 export async function PATCH(
   req: NextRequest,
@@ -20,6 +21,9 @@ export async function PATCH(
   }
 
   const { id } = await params;
+  const denied = await guardProject(user, id);
+  if (denied) return denied;
+
   const { name, slug, description, githubRepo, notifyDeployRoles } = await req.json();
 
   if (name !== undefined && name.trim().length < 2) {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { query } from "@/lib/db";
+import { guardProjectOf } from "@/lib/project-access";
 
 export async function POST(
   req: NextRequest,
@@ -20,6 +21,9 @@ export async function POST(
   }
 
   const { id } = await params;
+  const denied = await guardProjectOf(user, "case", id);
+  if (denied) return denied;
+
   const { historyId } = await req.json();
 
   if (!historyId) {

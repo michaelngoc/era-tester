@@ -10,6 +10,11 @@ export default async function RunsPage() {
     redirect("/login");
   }
 
+  // Người không phải admin toàn cục chỉ thấy dự án mình là thành viên
+  const memberFilter = user.isGlobalAdmin ? "" : " AND r.project_id IN (SELECT project_id FROM era_tester_project_members WHERE user_id = $1)";
+  const projectFilter = user.isGlobalAdmin ? "" : " AND id IN (SELECT project_id FROM era_tester_project_members WHERE user_id = $1)";
+  const scopeParams = user.isGlobalAdmin ? [] : [user.id];
+
   // Pre-fetch runs & projects trên Server Component
   const [runsRes, projsRes] = await Promise.all([
     query<RunItem>(`
@@ -26,13 +31,13 @@ export default async function RunsPage() {
       JOIN era_tester_projects p ON p.id = r.project_id AND (p.is_deleted IS NULL OR p.is_deleted = FALSE)
       LEFT JOIN era_tester_users u ON u.id = r.created_by
       LEFT JOIN era_tester_cases c ON c.last_run_id = r.id AND (c.is_deleted IS NULL OR c.is_deleted = FALSE)
-      WHERE (r.is_deleted IS NULL OR r.is_deleted = FALSE)
+      WHERE (r.is_deleted IS NULL OR r.is_deleted = FALSE)${memberFilter}
       GROUP BY r.id, p.name, p.github_repo, u.full_name, u.email
       ORDER BY r.created_at DESC
-    `),
+    `, scopeParams),
     query<{ id: number; name: string }>(`
-      SELECT id, name FROM era_tester_projects WHERE (is_deleted IS NULL OR is_deleted = FALSE) ORDER BY id ASC
-    `),
+      SELECT id, name FROM era_tester_projects WHERE (is_deleted IS NULL OR is_deleted = FALSE)${projectFilter} ORDER BY id ASC
+    `, scopeParams),
   ]);
 
   return (

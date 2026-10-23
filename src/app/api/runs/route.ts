@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { query } from "@/lib/db";
+import { guardProject } from "@/lib/project-access";
 
 export async function GET(req: NextRequest) {
   const user = await getCurrentUser();
@@ -30,9 +31,14 @@ export async function GET(req: NextRequest) {
     `;
     const params: any[] = [];
 
+    if (!user.isGlobalAdmin) {
+      params.push(user.id);
+      sql += ` AND r.project_id IN (SELECT project_id FROM era_tester_project_members WHERE user_id = $${params.length})`;
+    }
+
     if (projectId) {
-      sql += ` AND r.project_id = $1`;
       params.push(projectId);
+      sql += ` AND r.project_id = $${params.length}`;
     }
 
     sql += ` GROUP BY r.id, p.name, p.github_repo, u.full_name, u.email
@@ -60,6 +66,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Dự án và Tiêu đề đợt test là bắt buộc" }, { status: 400 });
     }
 
+    const denied = await guardProject(user, projectId);
+    if (denied) return denied;
+
     // 1. Tạo bản ghi Run mới
     const runRes = await query(
       `INSERT INTO era_tester_runs
@@ -78,8 +87,11 @@ export async function POST(req: NextRequest) {
     const caseUpdateParams: any[] = [newRun.id, projectId];
 
     if (Array.isArray(moduleIds) && moduleIds.length > 0) {
-      caseUpdateSql = `UPDATE era_tester_cases SET last_run_id = $1 WHERE module_id = ANY($2::int[])`;
+      caseUpdateSql = `UPDATE era_tester_cases SET last_run_id = $1 WHERE module_id = ANY($2::int[]) AND module_id IN (
+        SELECT id FROM era_tester_modules WHERE project_id = $3
+      )`;
       caseUpdateParams[1] = moduleIds;
+      caseUpdateParams.push(projectId);
     }
 
     await query(caseUpdateSql, caseUpdateParams);
