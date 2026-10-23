@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import bcrypt from "bcryptjs";
 import { query } from "./db";
 import { getGlobalAdminRoles } from "./permissions";
+import { isLegacyJwtSecret } from "./known-default-secrets";
 
 const MIN_JWT_SECRET_BYTES = 32;
 
@@ -13,6 +14,9 @@ export function getJwtSecret(): Uint8Array {
   const raw = process.env.JWT_SECRET;
   if (!raw || Buffer.byteLength(raw) < MIN_JWT_SECRET_BYTES) {
     throw new Error(`JWT_SECRET là bắt buộc và phải dài tối thiểu ${MIN_JWT_SECRET_BYTES} byte`);
+  }
+  if (isLegacyJwtSecret(raw)) {
+    throw new Error("JWT_SECRET đang dùng giá trị mặc định cũ đã lộ trong mã nguồn; hãy xoay sang secret mới");
   }
   return new TextEncoder().encode(raw);
 }

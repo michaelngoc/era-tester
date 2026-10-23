@@ -20,4 +20,4 @@ npm run dev # Port 3008
 ```
 
 Truy cập: `http://localhost:3008`
-Tài khoản Super Admin mặc định: `admin@eragroup.com.vn` / `Admin@123456`
+Không có tài khoản mặc định. Đặt `ADMIN_INITIAL_EMAIL` (cùng `JWT_SECRET` ≥ 32 byte và `ERA_TESTER_PASSWORD`) trong `.env.local`, rồi đăng ký chính email đó trên DB rỗng để tạo Super Admin đầu tiên; mật khẩu do bạn tự chọn khi đăng ký.

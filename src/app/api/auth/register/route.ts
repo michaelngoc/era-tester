@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { query } from "@/lib/db";
+import { withTransaction } from "@/lib/db";
 import { hashPassword } from "@/lib/auth";
+import { getGlobalAdminRoles } from "@/lib/permissions";
+
+// Khoá advisory cố định cho luồng đăng ký (tuần tự hoá kiểm tra email/bootstrap).
+const REGISTER_LOCK_KEY = 7_303_001;
 
 export async function POST(req: NextRequest) {
   try {
@@ -22,53 +26,68 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const existing = await query("SELECT id FROM era_tester_users WHERE email = $1 LIMIT 1", [
-      cleanEmail,
-    ]);
+    const hashedPassword = await hashPassword(password);
+    const initialAdminEmail = process.env.ADMIN_INITIAL_EMAIL?.trim().toLowerCase();
+    const globalAdminRoles = await getGlobalAdminRoles();
 
-    if (existing.rows.length > 0) {
+    // Khoá advisory + kiểm tra lại trong transaction: hai đăng ký đồng thời không cùng thành admin khởi tạo.
+    // DB rỗng: chỉ email khớp ADMIN_INITIAL_EMAIL (đã đặt) mới là SUPER_ADMIN ACTIVE; người khác chỉ PENDING.
+    // DB đã có user: ADMIN_INITIAL_EMAIL chỉ có hiệu lực khi chưa có tài khoản toàn quyền nào, vẫn PENDING
+    // trừ khi ADMIN_INITIAL_AUTO_ACTIVATE="true".
+    const outcome = await withTransaction(async (client) => {
+      await client.query("SELECT pg_advisory_xact_lock($1)", [REGISTER_LOCK_KEY]);
+
+      const existing = await client.query("SELECT id FROM era_tester_users WHERE email = $1 LIMIT 1", [cleanEmail]);
+      if (existing.rows.length > 0) return null;
+
+      const totalUsers = await client.query("SELECT COUNT(*) FROM era_tester_users");
+      const isEmptyDb = parseInt(totalUsers.rows[0].count, 10) === 0;
+      const matchesInitial = !!initialAdminEmail && cleanEmail === initialAdminEmail;
+
+      let isInitialAdmin = false;
+      if (matchesInitial) {
+        if (isEmptyDb) {
+          isInitialAdmin = true;
+        } else {
+          const admins = await client.query(
+            "SELECT 1 FROM era_tester_users WHERE role = ANY($1::text[]) LIMIT 1",
+            [globalAdminRoles]
+          );
+          isInitialAdmin = admins.rows.length === 0;
+        }
+      }
+
+      let role = "TESTER";
+      if (isInitialAdmin) {
+        role = "SUPER_ADMIN";
+      } else if (requestedRole === "DEVELOPER") {
+        role = "DEVELOPER";
+      }
+
+      const autoActivate = isInitialAdmin && (isEmptyDb || process.env.ADMIN_INITIAL_AUTO_ACTIVATE === "true");
+      const status = autoActivate ? "ACTIVE" : "PENDING";
+
+      const insertRes = await client.query(
+        `INSERT INTO era_tester_users (email, password_hash, full_name, role, status)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING id, email, full_name, role, status`,
+        [cleanEmail, hashedPassword, fullName || "", role, status]
+      );
+      return insertRes.rows[0];
+    });
+
+    if (!outcome) {
       return NextResponse.json({ error: "Email này đã được đăng ký" }, { status: 400 });
     }
+    const user = outcome;
 
-    // Tài khoản đầu tiên của DB rỗng là bootstrap. ADMIN_INITIAL_EMAIL chỉ có hiệu lực khi được đặt
-    // VÀ chưa tồn tại SUPER_ADMIN nào; tài khoản đó vẫn PENDING trừ khi ADMIN_INITIAL_AUTO_ACTIVATE="true"
-    // (người đăng ký đầu tiên không tự chiếm quyền cao nhất chỉ bằng đoán email).
-    const totalUsers = await query("SELECT COUNT(*) FROM era_tester_users");
-    const isFirstUser = parseInt(totalUsers.rows[0].count, 10) === 0;
 
-    const initialAdminEmail = process.env.ADMIN_INITIAL_EMAIL?.trim().toLowerCase();
-    let isInitialAdmin = false;
-    if (!isFirstUser && initialAdminEmail && cleanEmail === initialAdminEmail) {
-      const superAdmins = await query("SELECT 1 FROM era_tester_users WHERE role = 'SUPER_ADMIN' LIMIT 1");
-      isInitialAdmin = superAdmins.rows.length === 0;
-    }
-
-    let role = "TESTER";
-    if (isFirstUser || isInitialAdmin) {
-      role = "SUPER_ADMIN";
-    } else if (requestedRole === "DEVELOPER") {
-      role = "DEVELOPER";
-    }
-
-    const autoActivate = isFirstUser || (isInitialAdmin && process.env.ADMIN_INITIAL_AUTO_ACTIVATE === "true");
-    const status = autoActivate ? "ACTIVE" : "PENDING";
-
-    const hashedPassword = await hashPassword(password);
-
-    const insertRes = await query(
-      `INSERT INTO era_tester_users (email, password_hash, full_name, role, status)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING id, email, full_name, role, status`,
-      [cleanEmail, hashedPassword, fullName || "", role, status]
-    );
-
-    const user = insertRes.rows[0];
 
     return NextResponse.json({
       success: true,
       user,
       message:
-        status === "ACTIVE"
+        user.status === "ACTIVE"
           ? "Đăng ký thành công và đã tự động kích hoạt quyền Super Admin!"
           : "Đăng ký thành công! Tài khoản của bạn đang chờ Super Admin phê duyệt.",
     });

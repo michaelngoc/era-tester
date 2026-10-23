@@ -34,6 +34,11 @@ describe("B-001 JWT_SECRET fail closed", () => {
     expect(() => getJwtSecret()).toThrow();
   });
 
+  it("JWT_SECRET trùng giá trị mặc định cũ (đủ dài) thì bị từ chối", () => {
+    process.env.JWT_SECRET = "eraweb_tester_hub_jwt_super_secure_secret_2026";
+    expect(() => getJwtSecret()).toThrow(/mặc định cũ/);
+  });
+
   it("đủ 32 byte thì ký và xác thực được", async () => {
     process.env.JWT_SECRET = "x".repeat(32);
     const token = await createSessionToken(session);

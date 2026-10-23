@@ -1,5 +1,6 @@
 import "server-only";
-import { Pool, QueryResult, QueryResultRow } from "pg";
+import { Pool, PoolClient, QueryResult, QueryResultRow } from "pg";
+import { isLegacyDbPassword } from "./known-default-secrets";
 
 const schema = process.env.PG_SCHEMA || "era_tester";
 
@@ -12,6 +13,9 @@ export function getDbCredentials(env: NodeJS.ProcessEnv = process.env): { user: 
   const password = env.ERA_TESTER_PASSWORD || env.ERA_ADMIN_PASSWORD;
   if (!user || !password) {
     throw new Error("Thiếu ERA_TESTER_USER / ERA_TESTER_PASSWORD (hoặc ERA_ADMIN_USER / ERA_ADMIN_PASSWORD)");
+  }
+  if (isLegacyDbPassword(password)) {
+    throw new Error("Mật khẩu DB đang dùng giá trị mặc định cũ đã lộ trong mã nguồn; hãy xoay mật khẩu mới");
   }
   return { user, password };
 }
@@ -48,3 +52,19 @@ export async function query<T extends QueryResultRow = any>(
   }
 }
 
+
+// Chạy fn trong một transaction trên một kết nối riêng (dùng cho pg_advisory_xact_lock).
+export async function withTransaction<T>(fn: (client: PoolClient) => Promise<T>): Promise<T> {
+  const client = await getPool().connect();
+  try {
+    await client.query("BEGIN");
+    const result = await fn(client);
+    await client.query("COMMIT");
+    return result;
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
