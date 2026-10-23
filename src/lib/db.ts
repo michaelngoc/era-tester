@@ -30,11 +30,16 @@ function getPool(): Pool {
       user,
       password,
       ssl: process.env.PG_SSL === "true" ? { rejectUnauthorized: false } : undefined,
-      max: 10,
-      idleTimeoutMillis: 30000,
+      // Serverless: mỗi instance ít kết nối, đóng nhanh khi rảnh; instance bị đóng băng vẫn giữ socket,
+      // role era_tester_user dùng chung với site docs và Postgres chỉ có 100 slot (chung với manage production).
+      max: 3,
+      idleTimeoutMillis: 5000,
+      maxLifetimeSeconds: 300,
       connectionTimeoutMillis: 5000,
       options: `-c search_path="${schema}"`,
     });
+    // Kết nối rảnh bị server cắt (idle_session_timeout, restart) không được làm sập process.
+    pool.on("error", (error) => console.error("[Database Pool Error]", error.message));
   }
   return pool;
 }
