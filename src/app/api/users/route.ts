@@ -34,7 +34,7 @@ export async function GET(req: Request) {
     ["DEVELOPER", "LEADER", "CTO", "SUPER_ADMIN", "MEMBER"].includes(u.role)
   );
   const managers = allUsers.filter((u) =>
-    ["SUPER_ADMIN", "CTO", "LEADER", "PM", "PO", "BA"].includes(u.role)
+    ["SUPER_ADMIN", "CEO", "CTO", "LEADER", "PM", "PO", "BA"].includes(u.role)
   );
 
   return NextResponse.json({

@@ -5,7 +5,7 @@ import { UserRole } from "./auth";
 export interface RoleDefinition {
   role: UserRole;
   label: string;
-  group: "Quản Trị" | "Kỹ Thuật" | "Sản Phẩm" | "Kiểm Thử" | "Khác";
+  group: "Quản Trị" | "Kỹ Thuật" | "Sản Phẩm" | "Kiểm Thử" | "Kinh Doanh" | "Khác";
   description: string;
   isImmutable?: boolean; // SUPER_ADMIN luôn có toàn quyền, không thể tắt
 }
@@ -17,6 +17,12 @@ export const ALL_SYSTEM_ROLES: RoleDefinition[] = [
     group: "Quản Trị",
     description: "Toàn quyền quản trị cao nhất của hệ thống, không thể thu hồi.",
     isImmutable: true,
+  },
+  {
+    role: "CEO",
+    label: "CEO (Giám Đốc Điều Hành)",
+    group: "Quản Trị",
+    description: "Lãnh đạo công ty, theo dõi kinh doanh và vào được trang Lead.",
   },
   {
     role: "CTO",
@@ -71,6 +77,12 @@ export const ALL_SYSTEM_ROLES: RoleDefinition[] = [
     label: "Developer (Lập Trình Viên)",
     group: "Kỹ Thuật",
     description: "Lập trình viên phát triển tính năng và sửa lỗi.",
+  },
+  {
+    role: "SALES",
+    label: "Sales (Kinh Doanh)",
+    group: "Kinh Doanh",
+    description: "Nhân viên kinh doanh, dùng trang Lead để tìm và liên hệ khách.",
   },
   {
     role: "MEMBER",

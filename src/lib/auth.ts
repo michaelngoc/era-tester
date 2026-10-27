@@ -23,6 +23,7 @@ export function getJwtSecret(): Uint8Array {
 
 export type UserRole =
   | "SUPER_ADMIN"
+  | "CEO"
   | "CTO"
   | "LEADER"
   | "PM"
@@ -32,6 +33,7 @@ export type UserRole =
   | "QC"
   | "TESTER"
   | "DEVELOPER"
+  | "SALES"
   | "MEMBER";
 
 export interface UserSession {

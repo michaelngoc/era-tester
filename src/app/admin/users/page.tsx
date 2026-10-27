@@ -360,7 +360,7 @@ export default function AdminUsersPage() {
                                 value={u.role || "TESTER"}
                                 onChange={(e) => handleUpdateRole(u.id, e.target.value)}
                                 className={`px-2.5 py-1 rounded-xl text-xs font-semibold border focus:outline-none cursor-pointer transition ${
-                                  u.role === "SUPER_ADMIN" || u.role === "CTO"
+                                  u.role === "SUPER_ADMIN" || u.role === "CEO" || u.role === "CTO"
                                     ? "bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-500/30"
                                     : u.role === "DEVELOPER"
                                     ? "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-300 dark:border-indigo-500/30"
@@ -405,7 +405,16 @@ export default function AdminUsersPage() {
                                   </option>
                                 </optgroup>
 
+                                <optgroup label="Kinh Doanh">
+                                  <option value="SALES" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+                                    Sales (Kinh Doanh)
+                                  </option>
+                                </optgroup>
+
                                 <optgroup label="Quản Trị Hệ Thống">
+                                  <option value="CEO" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+                                    CEO (Giám Đốc Điều Hành)
+                                  </option>
                                   <option value="SUPER_ADMIN" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
                                     Super Admin (Quản Trị Tối Cao)
                                   </option>
