@@ -49,6 +49,18 @@ export function isTesterNotifyCommit(message: string): boolean {
  * Lấy mã test case từ `[#12]` hoặc `[case-12]`.
  * KHÔNG khớp `#12` trần: số PR kiểu `(#97)` / `Merge pull request #99` không phải mã case.
  */
+/**
+ * Lấy mã module từ `[#M12]` hoặc `[module-12]`: chuyển MỌI case NEW/FIX của module đó sang VERIFY.
+ * Không trùng với `[#12]` (mã case).
+ */
+export function extractModuleIds(message: string): number[] {
+  const ids = new Set<number>();
+  for (const m of message.matchAll(/\[(?:#M|module-)(\d+)\]/gi)) {
+    ids.add(parseInt(m[1], 10));
+  }
+  return Array.from(ids);
+}
+
 export function extractCaseIds(message: string): number[] {
   const ids = new Set<number>();
   for (const m of message.matchAll(/\[(?:#|case-)(\d+)\]/gi)) {

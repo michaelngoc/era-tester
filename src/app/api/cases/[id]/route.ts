@@ -137,7 +137,7 @@ export async function PATCH(
     // Tìm Developer đã từng nhận sửa hoặc commit bug này từ bảng era_tester_case_history
     const devHistoryRes = await query(
       `SELECT actor_id FROM era_tester_case_history 
-       WHERE case_id = $1 AND action IN ('CLAIM_BUG', 'AUTO_GIT_VERIFY') 
+       WHERE case_id = $1 AND action IN ('CLAIM_BUG', 'AUTO_GIT_VERIFY', 'AUTO_GIT_VERIFY_MODULE') 
        ORDER BY id DESC LIMIT 1`,
       [id]
     );

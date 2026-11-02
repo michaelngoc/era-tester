@@ -73,6 +73,8 @@ export async function POST(req: NextRequest) {
       referencedCases: result.referencedCases,
       movedCases: result.movedCases,
       skippedCases: result.skippedCases,
+      movedModuleCases: result.movedModuleCases,
+      skippedModules: result.skippedModules,
     });
   } catch (error: any) {
     console.error("[GitHub Webhook Error]", error);

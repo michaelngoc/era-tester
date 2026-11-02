@@ -32,13 +32,21 @@ vi.mock("@/lib/db", () => ({
       if (!c) return { rows: [] };
       if (s.includes("m.project_id = $2") && c.projectId !== params[1]) return { rows: [] };
       if (s.includes("is_deleted") && c.isDeleted) return { rows: [] };
-      return { rows: [{ id: c.id, status: c.status }] };
+      return { rows: [{ id: c.id, status: c.status, module_id: c.moduleId }] };
     }
     if (s.startsWith("UPDATE era_tester_cases c SET status = 'VERIFY'")) {
       const c = db.cases.find((x) => x.id === params[1])!;
       c.status = "VERIFY";
       c.impacted = true;
       return { rows: [] };
+    }
+    // Chuyển cả module: mô phỏng WHERE module_id = ANY($1) AND project_id = $2 AND status IN (NEW, FIX) AND chưa xoá.
+    if (s.startsWith("WITH target AS")) {
+      const moved = db.cases.filter(
+        (c) => params[0].includes(c.moduleId) && c.projectId === params[1] && ["NEW", "FIX"].includes(c.status) && !c.isDeleted
+      );
+      for (const c of moved) c.status = "VERIFY";
+      return { rows: moved.map((c) => ({ case_id: c.id })) };
     }
     if (s.includes("INSERT INTO era_tester_case_history")) return { rows: [] };
 
@@ -98,7 +106,7 @@ describe("processGitPushImpact: [#ID] -> VERIFY", () => {
     expect(res.skippedCases).toEqual([6]);
     expect(res.referencedCases).toEqual([5, 6]);
     const historyIds = db.calls
-      .filter((c) => c.sql.includes("INSERT INTO era_tester_case_history"))
+      .filter((c) => c.sql.includes("INSERT INTO era_tester_case_history") && !c.sql.includes("WITH target AS"))
       .map((c) => c.params[0]);
     expect(historyIds).toEqual([5]);
   });
@@ -169,5 +177,68 @@ describe("processGitPushImpact: module impact", () => {
     expect(res.impactedCount).toBe(0);
     expect(db.cases.every((c) => !c.impacted)).toBe(true);
     expect(db.calls.some((c) => c.sql.includes("FROM era_tester_modules"))).toBe(false);
+  });
+});
+
+describe("processGitPushImpact: cả module sang VERIFY", () => {
+  beforeEach(() => {
+    db.cases.push(
+      { id: 8, status: "NEW", projectId: 1, isDeleted: false, moduleId: 10, impacted: false },
+      { id: 9, status: "FIX", projectId: 1, isDeleted: false, moduleId: 10, impacted: false },
+      { id: 11, status: "CLOSED", projectId: 1, isDeleted: false, moduleId: 10, impacted: false },
+      { id: 12, status: "DEPLOY", projectId: 1, isDeleted: false, moduleId: 10, impacted: false }
+    );
+  });
+
+  it("nhắc một [#ID] thì mọi case NEW/FIX cùng module sang VERIFY, không đụng DEPLOY/CLOSED/xoá mềm", async () => {
+    const res = await processGitPushImpact({
+      branch: "tester",
+      repoFullName: "era/manage",
+      commits: [commit("fix(auth): sửa lỗi [#5]")],
+    });
+    expect(res.movedCases).toEqual([5]);
+    expect(res.movedModuleCases).toEqual([8, 9]);
+    expect(db.cases.find((c) => c.id === 11)!.status).toBe("CLOSED");
+    expect(db.cases.find((c) => c.id === 12)!.status).toBe("DEPLOY");
+    expect(db.cases.find((c) => c.id === 7)!.status).toBe("NEW");
+  });
+
+  it("[#M<id>] chuyển cả module dù không nhắc case nào", async () => {
+    const res = await processGitPushImpact({
+      branch: "tester",
+      repoFullName: "era/manage",
+      commits: [commit("feat(auth): thêm đăng nhập [#M10]")],
+    });
+    expect(res.movedCases).toEqual([]);
+    expect(res.movedModuleCases).toEqual([5, 8, 9]);
+  });
+
+  it("module của project khác không bị chuyển", async () => {
+    const res = await processGitPushImpact({
+      branch: "tester",
+      repoFullName: "era/manage",
+      commits: [commit("feat(auth): thêm [#M20]")],
+    });
+    expect(res.movedModuleCases).toEqual([]);
+    expect(db.cases.find((c) => c.id === 6)!.status).toBe("NEW");
+  });
+
+  it("không xác định được project: báo skippedModules, không ghi gì", async () => {
+    const res = await processGitPushImpact({
+      branch: "tester",
+      repoFullName: "other/unknown-repo",
+      commits: [commit("feat(auth): thêm [#M10]")],
+    });
+    expect(res.skippedModules).toEqual([10]);
+    expect(db.calls.some((c) => c.sql.includes("WITH target AS"))).toBe(false);
+  });
+
+  it("commit chore không được xử lý", async () => {
+    const res = await processGitPushImpact({
+      branch: "tester",
+      repoFullName: "era/manage",
+      commits: [commit("chore(release): 4.1.0 [#M10]")],
+    });
+    expect(res.movedModuleCases).toEqual([]);
   });
 });

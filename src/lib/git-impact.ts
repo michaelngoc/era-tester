@@ -2,7 +2,7 @@ import "server-only";
 import micromatch from "micromatch";
 import { query } from "./db";
 import { sendGitPushImpactEmail } from "./mailer";
-import { extractCaseIds, isTesterNotifyCommit } from "./commit-types";
+import { extractCaseIds, extractModuleIds, isTesterNotifyCommit } from "./commit-types";
 
 export interface GitCommitInfo {
   hash: string;
@@ -31,6 +31,8 @@ export async function processGitPushImpact(payload: GitPushPayload) {
       referencedCases: [] as number[],
       movedCases: [] as number[],
       skippedCases: [] as number[],
+      movedModuleCases: [] as number[],
+      skippedModules: [] as number[],
       activeRunId: null,
       skippedCommits: payload.commits.length,
     };
@@ -106,7 +108,11 @@ export async function processGitPushImpact(payload: GitPushPayload) {
   const referencedCaseIds: number[] = [];
   const movedCaseIds: number[] = [];
   const skippedCaseIds: number[] = [];
+  const movedModuleCaseIds: number[] = [];
+  const skippedModuleIds: number[] = [];
   for (const commit of relevantCommits) {
+    // Module của case được nhắc trong commit này + module ghi rõ bằng [#M<id>].
+    const commitModuleIds = new Set<number>();
     for (const caseId of extractCaseIds(commit.message)) {
       if (!referencedCaseIds.includes(caseId)) referencedCaseIds.push(caseId);
 
@@ -115,8 +121,8 @@ export async function processGitPushImpact(payload: GitPushPayload) {
         continue;
       }
 
-      const caseRes = await query<{ id: number; status: string }>(
-        `SELECT c.id, c.status
+      const caseRes = await query<{ id: number; status: string; module_id: number | null }>(
+        `SELECT c.id, c.status, c.module_id
          FROM era_tester_cases c
          JOIN era_tester_modules m ON m.id = c.module_id
          WHERE c.id = $1
@@ -130,6 +136,7 @@ export async function processGitPushImpact(payload: GitPushPayload) {
         continue;
       }
       const oldStatus = caseRes.rows[0].status;
+      if (caseRes.rows[0].module_id != null) commitModuleIds.add(caseRes.rows[0].module_id);
       if (!movedCaseIds.includes(caseId)) movedCaseIds.push(caseId);
 
       // Chuyển case sang VERIFY và gán cho Tester tạo kịch bản (nếu vẫn còn ACTIVE)
@@ -162,6 +169,57 @@ export async function processGitPushImpact(payload: GitPushPayload) {
           commit.hash,
         ]
       );
+    }
+
+    // 3b. Cả ma trận của module thuộc về đợt này: mọi case NEW/FIX còn lại của module sang VERIFY.
+    // Commit thường chỉ ghi vài [#ID] tiêu biểu; trước đây phần còn lại nằm NEW mãi và không ai chạy.
+    // Không đụng DEPLOY/CLOSED (đã kiểm), case xoá mềm, hay module của project khác.
+    for (const moduleId of extractModuleIds(commit.message)) commitModuleIds.add(moduleId);
+    if (targetProjectId === null) {
+      for (const moduleId of commitModuleIds) if (!skippedModuleIds.includes(moduleId)) skippedModuleIds.push(moduleId);
+      continue;
+    }
+    if (commitModuleIds.size === 0) continue;
+    const moduleRes = await query<{ case_id: number }>(
+      `WITH target AS (
+         SELECT c.id, c.status
+         FROM era_tester_cases c
+         JOIN era_tester_modules m ON m.id = c.module_id
+         WHERE c.module_id = ANY($1::int[])
+           AND m.project_id = $2
+           AND c.status IN ('NEW', 'FIX')
+           AND (c.is_deleted IS NULL OR c.is_deleted = FALSE)
+       ),
+       upd AS (
+         UPDATE era_tester_cases c
+         SET status = 'VERIFY',
+             is_impacted_by_git = TRUE,
+             assigned_to = (
+               SELECT CASE WHEN u.status = 'ACTIVE' THEN u.id ELSE NULL END
+               FROM era_tester_users u
+               WHERE u.id = c.created_by
+             ),
+             last_run_id = COALESCE($3, c.last_run_id),
+             updated_at = NOW()
+         FROM target t
+         WHERE c.id = t.id
+         RETURNING c.id, t.status AS old_status
+       )
+       INSERT INTO era_tester_case_history
+         (case_id, run_id, actor_name, action, from_status, to_status, note, git_commit_hash)
+       SELECT id, $3, $4, 'AUTO_GIT_VERIFY_MODULE', old_status, 'VERIFY', $5, $6 FROM upd
+       RETURNING case_id`,
+      [
+        Array.from(commitModuleIds),
+        targetProjectId,
+        activeRunId,
+        commit.authorName,
+        `Cả module vào đợt kiểm theo commit: ${commit.message}`,
+        commit.hash,
+      ]
+    );
+    for (const row of moduleRes.rows) {
+      if (!movedModuleCaseIds.includes(row.case_id)) movedModuleCaseIds.push(row.case_id);
     }
   }
 
@@ -293,6 +351,8 @@ export async function processGitPushImpact(payload: GitPushPayload) {
     referencedCases: referencedCaseIds,
     movedCases: movedCaseIds,
     skippedCases: skippedCaseIds,
+    movedModuleCases: movedModuleCaseIds,
+    skippedModules: skippedModuleIds,
     activeRunId,
     skippedCommits: payload.commits.length - relevantCommits.length,
   };
