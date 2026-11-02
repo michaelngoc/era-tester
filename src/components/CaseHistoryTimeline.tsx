@@ -153,6 +153,25 @@ export default function CaseHistoryTimeline({
             Git Tự Động Verify
           </span>
         );
+      case "AUTO_GIT_VERIFY_MODULE":
+        return (
+          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-500/15 text-purple-600 dark:text-purple-400 border border-purple-500/30 flex items-center gap-1">
+            <Sparkles className="w-3 h-3" />
+            Git Verify Cả Module
+          </span>
+        );
+      case "OBSOLETE":
+        return (
+          <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-500/15 text-slate-600 dark:text-slate-400 border border-slate-500/30">
+            Lỗi Thời
+          </span>
+        );
+      case "PROD_VERIFIED":
+        return (
+          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+            Đạt Trên Production
+          </span>
+        );
       case "CLAIM_BUG":
         return (
           <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
